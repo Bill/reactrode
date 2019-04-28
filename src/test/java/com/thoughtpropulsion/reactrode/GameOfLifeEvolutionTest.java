@@ -18,16 +18,43 @@ class GameOfLifeEvolutionTest {
 
   @Test
   public void blockPatternTest() {
-    configureGame(4, 4);
+
+    /*
+      "block" is a static pattern: it won't change generation-to-generation
+      Make the pattern non-rectangular to uncover bugs where row/column sense is inconsistent.
+     */
+    configureGame(4, 5);
     final List<Boolean> pattern = toPattern(0, 0, 0, 0,
         0, 1, 1, 0,
         0, 1, 1, 0,
+        0, 0, 0, 0,
         0, 0, 0, 0);
-    // block is a static pattern: it won't change generation-to-generation
-    paintPattern(cellsFromBits( 4, 4,
+    paintPattern(cellsFromBits( 4, 5,
         pattern, -1));
-    validatePattern(cellsFromBits( 4, 4,
+    validatePattern(cellsFromBits( 4, 5,
         pattern, 0));
+  }
+
+  @Test
+  public void blinkerPatternTest() {
+    /*
+     "blinker" oscillates with period 2.
+     */
+    configureGame(5, 5);
+    final List<Boolean> a = toPattern(0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0,
+        0, 1, 1, 1, 0,
+        0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0);
+    final List<Boolean> b = toPattern(0, 0, 0, 0, 0,
+        0, 0, 1, 0, 0,
+        0, 0, 1, 0, 0,
+        0, 0, 1, 0, 0,
+        0, 0, 0, 0, 0);
+    paintPattern(cellsFromBits( 5, 5,
+        a, -1));
+    validatePattern(cellsFromBits( 5, 5,
+        b, 0));
   }
 
   private List<Boolean> toPattern(final int ... bits) {
@@ -39,7 +66,7 @@ class GameOfLifeEvolutionTest {
     final ArrayList<Cell> cells = new ArrayList<>(columns * rows);
     for (int y = 0; y < rows; y++) {
       for (int x = 0; x < columns; x++) {
-        cells.add(gameOfLife.createCell(x,y,generation,bits.get(y*rows + x)));
+        cells.add(gameOfLife.createCell(x,y,generation,bits.get(y*columns + x)));
       }
     }
     return cells;
