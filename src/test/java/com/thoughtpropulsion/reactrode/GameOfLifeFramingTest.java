@@ -54,7 +54,7 @@ class GameOfLifeFramingTest {
   }
 
   private GameOfLife configureGame(final int columns, final int rows) {
-    gameOfLife = new GameOfLife(columns, rows, new GameStateLocal());
+    gameOfLife = new GameOfLife(columns, rows, new GameStateLocal(columns, rows));
     return gameOfLife;
   }
 }

@@ -15,12 +15,18 @@ public interface GameState {
    */
   void put(final Mono<Cell> cellMono);
 
+  /**
+   * Assess liveness status at a coordinate. Unlike a {@code Map<K,Boolean>.get()} call,
+   * the {@Boolean} produced by this {@link Mono} will never be {@code null}.
+   * @param key
+   * @return
+   */
   Mono<Boolean> get(final Mono<Coordinate> key);
 
   /**
    *
    * @param generation the starting generation
-   * @return the sequence of changes (@{link Cell}s) starting with {@param generation}. If you keep
+   * @return the "hot" sequence of changes (@{link Cell}s) starting with {@param generation}. If you keep
    * consuming you'll see changes for successive generations.
    */
   Flux<Cell> changes(Mono<Integer> generation);
