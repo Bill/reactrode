@@ -37,29 +37,29 @@ public class GameOfLife {
    * @return the cold flux of cells ordered by generation, then by row, then by column
    */
   Flux<Cell> getCells() {
-    return Flux.range(0, Integer.MAX_VALUE) // generations
-        .flatMap(generation -> Flux.range(0, rows)
-            .flatMap(y -> Flux.range(0, columns)
-                .flatMap( x -> isAlive(x, y, generation)
-                    .map(isAlive ->
-                        JavaLang.returning(
-                            createCell(x, y, generation, isAlive),
-                            // store cell in game state as a side-effect
-                            cell -> {
-                              gameState.put(Mono.just(cell));
-                            })))));
+    return Flux.range(0, Integer.MAX_VALUE)
+        .map(offset -> Coordinate.create(offset,columns,rows))
+        .flatMap(coordinate ->
+            JavaLang.returning(nextGenerationFor(coordinate), gameState::put));
+  }
+
+  private Mono<Cell> nextGenerationFor(final Coordinate coordinate) {
+    return isAlive(coordinate).flatMap(isAlive -> Mono.just(Cell.create(coordinate, isAlive)));
   }
 
   /**
    * Calculate liveness for a new cell (state).
    *
-   * @param x
-   * @param y
-   * @param generation
+   * @param coordinate
    * @return true iff cell should be alive in {@param generation}
    * the {@Boolean} produced by this {@link Mono} will never be {@code null}
    */
-  private Mono<Boolean> isAlive(final int x, final int y, final int generation) {
+  private Mono<Boolean> isAlive(final Coordinate coordinate) {
+
+    final int x = coordinate.x;
+    final int y = coordinate.y;
+    final int generation = coordinate.generation;
+
     final int previousGen = generation - 1;
 
     return wasAliveCount(x - 1, y + 1, previousGen)

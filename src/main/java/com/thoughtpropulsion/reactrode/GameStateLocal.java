@@ -53,11 +53,7 @@ public class GameStateLocal implements GameState {
   }
 
   private int toOffset(final Coordinate coordinate) {
-    return toOffset(coordinate.generation, coordinate.y, coordinate.x);
-  }
-
-  private int toOffset(final int generation, final int x, final int y) {
-    return columns * (generation * rows  + y) + x;
+    return Coordinate.toOffset(coordinate.y, coordinate.x, coordinate.generation, columns, rows);
   }
 
   private void distributeToQueries(final Cell cell) {

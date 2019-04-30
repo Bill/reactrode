@@ -15,14 +15,33 @@ public class Coordinate {
   public final int y;
   public final int x;
 
-
-  public static Coordinate create(final int x, final int y, final int generation, final int columns,
-                                  final int rows) {
+  public static Coordinate create(final int x, final int y, final int generation,
+                                  final int columns, final int rows) {
     return new Coordinate(x,y,generation,columns,rows);
   }
 
-  private Coordinate(final int x, final int y, final int generation, final int columns,
-                     final int rows) {
+  public static Coordinate create(final int offset,
+                                  final int columns, final int rows) {
+    final int generationSize = columns * rows;
+    final int generation = offset / generationSize;
+    final int generationStart = generation * generationSize;
+    final int y = (offset - generationStart)/columns;
+    final int rowStart = generationStart + y * columns;
+    final int x = offset - rowStart;
+    return new Coordinate(x,y, generation, columns, rows);
+  }
+
+  public static int toOffset(final int x, final int y, final int generation,
+                             final int columns, final int rows) {
+    return columns * (generation * rows + y) + x;
+  }
+
+  public int toOffset(final int columns, final int rows) {
+    return toOffset(x,y,generation,columns,rows);
+  }
+
+  private Coordinate(final int x, final int y, final int generation,
+                     final int columns, final int rows) {
     // modulo arithmetic maps the coordinate parameters into canonical locations on the torus
     this.x = x%columns; this.y = y%rows; this.generation = generation;
   }
