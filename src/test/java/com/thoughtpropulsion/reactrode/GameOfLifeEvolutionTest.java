@@ -40,7 +40,7 @@ class GameOfLifeEvolutionTest {
     /*
       "block" is a 2x2 static form: it won't change generation-to-generation
 
-      This pattern is non-rectangular to uncover bugs where row/column sense is inconsistent.
+      This pattern is non-square to uncover bugs where row/column sense is inconsistent.
      */
 
     configureGame(4, 5);
@@ -59,10 +59,6 @@ class GameOfLifeEvolutionTest {
     final Disposable validation = validatePattern(cellsFromBits(4, 5,
         pattern, 0), 0, validationOffset);
 
-    /*
-     Drive the simulation
-     */
-
     driveSimulation(validationOffset, pattern.size());
 
     validation.dispose();
@@ -70,6 +66,7 @@ class GameOfLifeEvolutionTest {
 
   @Test
   public void blinkerPatternTest() throws InterruptedException {
+
     /*
      "blinker" is a form that oscillates with period 2.
      */
@@ -100,10 +97,6 @@ class GameOfLifeEvolutionTest {
 
     final Disposable validation2 = validatePattern(cellsFromBits(5, 5,
         a, 1), 1, validationOffset);
-
-    /*
-     Drive the simulation
-     */
 
     driveSimulation(validationOffset, totalSize);
 
