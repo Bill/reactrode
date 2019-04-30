@@ -1,3 +1,7 @@
+This is a [Conway's Game of Life](https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life) simulation implemented in a reactive style using [Project Reactor](https://projectreactor.io/).
+
+## Status
+
 Just getting started here. See the tests.
 
 ## TODO
@@ -7,3 +11,5 @@ Just getting started here. See the tests.
 * make a visualization: maybe an RSocket client for JavaScript or something
 * enable BlockHound https://github.com/reactor/BlockHound
 * consider making `GameState.put()` return a `Mono<Void>`. This would be closer to Geode semantics so it might be valuable to experiment with.
+* implement `GameState` with Apache Geode
+* &hellip; profit!
