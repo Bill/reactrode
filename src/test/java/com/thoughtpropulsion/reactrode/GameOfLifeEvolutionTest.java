@@ -6,41 +6,79 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opentest4j.TestAbortedException;
+import reactor.core.Disposable;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
+import reactor.test.StepVerifier;
 
 class GameOfLifeEvolutionTest {
 
   private GameStateLocal gameState;
   private GameOfLife gameOfLife;
+  private Scheduler parallelScheduler;
+
+  @BeforeEach
+  public void beforeEach() {
+    parallelScheduler = Schedulers.newParallel("parallel-scheduler",4);
+  }
+
+  @AfterEach
+  public void afterEach() {
+    parallelScheduler.dispose();
+  }
 
   @Test
-  public void blockPatternTest() {
+  public void blockPatternTest() throws InterruptedException {
 
     /*
-      "block" is a static pattern: it won't change generation-to-generation
-      Make the pattern non-rectangular to uncover bugs where row/column sense is inconsistent.
+      "block" is a 2x2 static form: it won't change generation-to-generation
+
+      This pattern is non-rectangular to uncover bugs where row/column sense is inconsistent.
      */
+
     configureGame(4, 5);
+
     final List<Boolean> pattern = toPattern(0, 0, 0, 0,
         0, 1, 1, 0,
         0, 1, 1, 0,
         0, 0, 0, 0,
         0, 0, 0, 0);
+
     paintPattern(cellsFromBits( 4, 5,
         pattern, -1));
-    validatePattern(cellsFromBits( 4, 5,
-        pattern, 0));
+
+    final AtomicInteger validationOffset = new AtomicInteger(0);
+
+    final Disposable validation = validatePattern(cellsFromBits(4, 5,
+        pattern, 0), 0, validationOffset);
+
+    /*
+     Drive the simulation
+     */
+
+    driveSimulation(validationOffset, pattern.size());
+
+    validation.dispose();
   }
 
   @Test
-  public void blinkerPatternTest() {
+  public void blinkerPatternTest() throws InterruptedException {
     /*
-     "blinker" oscillates with period 2.
+     "blinker" is a form that oscillates with period 2.
      */
+
     configureGame(5, 5);
+
     final List<Boolean> a = toPattern(0, 0, 0, 0, 0,
         0, 0, 0, 0, 0,
         0, 1, 1, 1, 0,
@@ -51,10 +89,29 @@ class GameOfLifeEvolutionTest {
         0, 0, 1, 0, 0,
         0, 0, 1, 0, 0,
         0, 0, 0, 0, 0);
-    paintPattern(cellsFromBits( 5, 5,
-        a, -1));
-    validatePattern(cellsFromBits( 5, 5,
-        b, 0));
+
+    assertThat(b.size()).as("generation sizes are equal").isEqualTo(a.size());
+
+    paintPattern(cellsFromBits( 5, 5, a, -1));
+
+    final int totalSize = a.size() + b.size();
+
+    final AtomicInteger validationOffset = new AtomicInteger(0);
+
+    final Disposable validation = validatePattern(cellsFromBits(5, 5,
+        b, 0), 0, validationOffset);
+
+    final Disposable validation2 = validatePattern(cellsFromBits(5, 5,
+        a, 1), 1, validationOffset);
+
+    /*
+     Drive the simulation
+     */
+
+    driveSimulation(validationOffset, totalSize);
+
+    validation.dispose();
+    validation2.dispose();
   }
 
   private List<Boolean> toPattern(final int ... bits) {
@@ -76,24 +133,39 @@ class GameOfLifeEvolutionTest {
     pattern.forEach(cell -> paintCell(cell));
   }
 
-  private void validatePattern(final List<Cell> pattern) {
+  private Disposable validatePattern(final List<Cell> pattern, final int generation,
+                                        final AtomicInteger offset) {
 
-    /*
-     TODO: feels like I have no great choices here for comparing "sequences". Candidates:
-     Java 8 Stream: nothing out of the box
-     Flux: I don't want to have to create a Flux for my pattern (List)
-     Iterator: just yuck. Again, no good out of the box solution (see below)
-     */
-
-    final Iterator<Cell> cells = gameOfLife.getCells().toStream().limit(pattern.size()).iterator();
     final Iterator<Cell> patternCells = pattern.iterator();
 
-    while(cells.hasNext() && patternCells.hasNext()) {
-      final Cell cell = cells.next();
-      final Cell expect = patternCells.next();
-      assertThat(cell).as("game cell maches expected pattern").isEqualTo(expect);
-    }
-    assertThat(cells.hasNext()).as("game produced as many cells as pattern").isEqualTo(patternCells.hasNext());
+    return gameState.changes(Mono.just(generation))
+        //.subscribeOn(parallelScheduler) // this does not affect the thread used in subscribe()
+        .publishOn(parallelScheduler)   // this affects the thread used in subscribe()
+        .subscribe(
+            cell -> {
+              assertThat(patternCells.hasNext()).as("verify that test pattern is not too short")
+                  .isTrue();
+              final Cell expect = patternCells.next();
+              assertThat(cell).as("game cell maches expected pattern").isEqualTo(expect);
+              offset.getAndIncrement();
+              System.out.printf("✓ %s", Thread.currentThread().getName());
+            }
+            ,
+            error -> {
+              throw new TestAbortedException("game state changes flux produced error", error);
+            },
+            () -> assertThat(offset.get()).as("game produced as many cells as pattern")
+                .isEqualTo(pattern.size()));
+  }
+
+  private void driveSimulation(final AtomicInteger offset, final int size)
+      throws InterruptedException {
+    gameOfLife.getCells().take(size).subscribe(cell -> {
+      /*iterate for side effects*/
+    });
+
+    while (offset.get() < size)
+      Thread.sleep(10);
   }
 
   private void paintCell(final Cell cell) {

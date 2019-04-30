@@ -13,11 +13,11 @@ import reactor.core.publisher.Mono;
 
 public class GameStateLocal implements GameState {
 
+  // cells keyed on offset (see toOffset())
   private Map<Integer,Boolean> cells = new ConcurrentHashMap<>();
 
   // key is generation, value is list of sinks for fluxes subscribed for that generation
-  private ConcurrentNavigableMap<Integer, List<FluxSink<Cell>>> queries =
-      new ConcurrentSkipListMap<>();
+  private Map<Integer, List<FluxSink<Cell>>> queries = new ConcurrentHashMap<>();
 
   public final int columns; // x
   public final int rows;    // y
@@ -26,9 +26,9 @@ public class GameStateLocal implements GameState {
     this.columns = columns; this.rows = rows;
   }
 
-  // TODO: age "old" entries out of cells map
   @Override
   public void put(final Mono<Cell> cellMono) {
+    // TODO: age "old" entries out of cells map
     cellMono.subscribe( cell -> {
       cells.put(toOffset(cell.coordinate), cell.isAlive);
       distributeToQueries(cell);
@@ -49,7 +49,7 @@ public class GameStateLocal implements GameState {
   public Flux<Cell> changes(final Mono<Integer> generationMono) {
     return Flux.create(sink -> {
       generationMono.subscribe( generation -> {
-        queries.computeIfAbsent(generation, (k) -> new ArrayList<>()).add(sink);
+        getQueriesForGeneration(generation).add(sink);
       });
     });
   }
@@ -59,11 +59,22 @@ public class GameStateLocal implements GameState {
   }
 
   private int toOffset(final int generation, final int x, final int y) {
-    return rows * (generation * columns  + y) + x;
+    return columns * (generation * rows  + y) + x;
   }
 
   private void distributeToQueries(final Cell cell) {
-    queries.tailMap(cell.coordinate.generation, true)
-        .forEach((generation, sinks) -> sinks.forEach(sink -> sink.next(cell)));
+    final List<FluxSink<Cell>> queriesForGeneration = getQueriesForGeneration(cell.coordinate.generation);
+    queriesForGeneration.forEach(sink -> sink.next(cell));
   }
+
+  /**
+   * Get the (possibly empty) list of query {@code List<FluxSink<Cell>>} for the {@param generation}
+   *
+   * @param generation is the generation of interest
+   * @return not null {@code List<FluxSink<Cell>>} for the generation
+   */
+  private List<FluxSink<Cell>> getQueriesForGeneration(final Integer generation) {
+    return queries.computeIfAbsent(generation, (k) -> new ArrayList<>());
+  }
+
 }

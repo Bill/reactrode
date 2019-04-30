@@ -41,7 +41,13 @@ public class GameOfLife {
         .flatMap(generation -> Flux.range(0, rows)
             .flatMap(y -> Flux.range(0, columns)
                 .flatMap( x -> isAlive(x, y, generation)
-                    .map(isAlive -> createCell(x, y, generation, isAlive)))));
+                    .map(isAlive ->
+                        JavaLang.returning(
+                            createCell(x, y, generation, isAlive),
+                            // store cell in game state as a side-effect
+                            cell -> {
+                              gameState.put(Mono.just(cell));
+                            })))));
   }
 
   /**
@@ -56,16 +62,16 @@ public class GameOfLife {
   private Mono<Boolean> isAlive(final int x, final int y, final int generation) {
     final int previousGen = generation - 1;
 
-    return liveCount(x - 1, y + 1, previousGen)
-        .concatWith(liveCount(x, y + 1, previousGen))
-        .concatWith(liveCount(x + 1, y + 1, previousGen))
+    return wasAliveCount(x - 1, y + 1, previousGen)
+        .concatWith(wasAliveCount(x, y + 1, previousGen))
+        .concatWith(wasAliveCount(x + 1, y + 1, previousGen))
 
-        .concatWith(liveCount(x - 1, y, previousGen))
-        .concatWith(liveCount(x + 1, y, previousGen))
+        .concatWith(wasAliveCount(x - 1, y, previousGen))
+        .concatWith(wasAliveCount(x + 1, y, previousGen))
 
-        .concatWith(liveCount(x - 1, y - 1, previousGen))
-        .concatWith(liveCount(x, y - 1, previousGen))
-        .concatWith(liveCount(x + 1, y - 1, previousGen))
+        .concatWith(wasAliveCount(x - 1, y - 1, previousGen))
+        .concatWith(wasAliveCount(x, y - 1, previousGen))
+        .concatWith(wasAliveCount(x + 1, y - 1, previousGen))
         .reduce(0, (a, b) -> a + b)
         .zipWith(wasAlive(x,y,previousGen))
         .map((t2) -> {
@@ -97,7 +103,7 @@ public class GameOfLife {
    * @return 1 if cell was alive, otherwise return 0.
    * the {@Integer} produced by this {@link Mono} will never be {@code null}
    */
-  private Mono<Integer> liveCount(final int x, final int y, final int generation) {
+  private Mono<Integer> wasAliveCount(final int x, final int y, final int generation) {
     return wasAlive(x,y,generation).map(wasAlive -> wasAlive ? 1 : 0);
   }
 

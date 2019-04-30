@@ -14,6 +14,7 @@ dependencies {
     implementation("io.vavr:vavr:1.0.0-alpha-2")
     testImplementation("org.junit.jupiter:junit-jupiter:5.4.2")
     testCompile("org.assertj:assertj-core:3.11.1")
+    testCompile("io.projectreactor:reactor-test:3.2.8.RELEASE")
 }
 
 configure<JavaPluginConvention> {

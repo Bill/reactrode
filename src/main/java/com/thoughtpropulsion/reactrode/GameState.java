@@ -25,9 +25,8 @@ public interface GameState {
 
   /**
    *
-   * @param generation the starting generation
-   * @return the "hot" sequence of changes (@{link Cell}s) starting with {@param generation}. If you keep
-   * consuming you'll see changes for successive generations.
+   * @param generation the generation of interest
+   * @return the "hot" sequence of changes (@{link Cell}s) for {@param generation}.
    */
   Flux<Cell> changes(Mono<Integer> generation);
 }

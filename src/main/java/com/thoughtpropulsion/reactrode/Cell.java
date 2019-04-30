@@ -31,4 +31,13 @@ public class Cell {
   public int hashCode() {
     return Objects.hash(coordinate, isAlive);
   }
+
+  @Override
+  public String toString() {
+    final StringBuffer sb = new StringBuffer("Cell{");
+    sb.append("coordinate=").append(coordinate);
+    sb.append(", isAlive=").append(isAlive);
+    sb.append('}');
+    return sb.toString();
+  }
 }

@@ -45,4 +45,14 @@ public class Coordinate {
   public int hashCode() {
     return Objects.hash(generation, y, x);
   }
+
+  @Override
+  public String toString() {
+    final StringBuffer sb = new StringBuffer("Coordinate{");
+    sb.append("generation=").append(generation);
+    sb.append(", y=").append(y);
+    sb.append(", x=").append(x);
+    sb.append('}');
+    return sb.toString();
+  }
 }
