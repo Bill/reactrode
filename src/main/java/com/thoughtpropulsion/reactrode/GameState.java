@@ -6,14 +6,16 @@ import reactor.core.publisher.Mono;
 public interface GameState {
 
   /**
-   * Sort of like {@link java.util.Map#put(Object, Object)} but {@param cellMono} has both
-   * the ({@link Coordinate}) key and the ({@link Boolean}) value.
-   * Unlike {@link java.util.Map#put(Object, Object)} this method returns nothing so it's
-   * "fire-and-forget" in reactive parlance.
+   * Sort of like {@link java.util.Map#put(Object, Object)} but {@param cellsFlux} produces
+   * {@link Cell}s that have both the ({@link Coordinate}) key and the ({@link Boolean}) value.
    *
    * @param cellMono
+   * @return
    */
-  void put(final Mono<Cell> cellMono);
+  Mono<Boolean> put(final Mono<Cell> cellMono);
+
+
+  void putAll(final Flux<Cell> cellFlux);
 
   /**
    * Assess liveness status at a coordinate. Unlike a {@code Map<K,Boolean>.get()} call,

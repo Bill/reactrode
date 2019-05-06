@@ -6,33 +6,26 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.LongAdder;
+import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.opentest4j.TestAbortedException;
-import reactor.core.Disposable;
+import reactor.core.publisher.BaseSubscriber;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Hooks;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
 class GameOfLifeEvolutionTest {
 
-  private GameStateLocal gameState;
+  private GameState gameState;
   private GameOfLife gameOfLife;
-  private Scheduler parallelScheduler;
 
-  @BeforeEach
-  public void beforeEach() {
-    parallelScheduler = Schedulers.newParallel("parallel-scheduler",4);
-  }
-
-  @AfterEach
-  public void afterEach() {
-    parallelScheduler.dispose();
-  }
+  @BeforeAll
+  static void beforeAll() { Hooks.onOperatorDebug();}
 
   @Test
   public void blockPatternTest() throws InterruptedException {
@@ -51,17 +44,15 @@ class GameOfLifeEvolutionTest {
         0, 0, 0, 0,
         0, 0, 0, 0);
 
-    paintPattern(cellsFromBits( 4, 5,
+    paintPattern(cellsFromBits(4, 5,
         pattern, -1));
 
-    final AtomicInteger validationOffset = new AtomicInteger(0);
+    final LongAdder validationOffset = new LongAdder();
 
-    final Disposable validation = validatePattern(cellsFromBits(4, 5,
+    validatePattern(cellsFromBits(4, 5,
         pattern, 0), 0, validationOffset);
 
-    driveSimulation(validationOffset, pattern.size());
-
-    validation.dispose();
+    driveSimulation(()->validationOffset.longValue() >= pattern.size());
   }
 
   @Test
@@ -86,26 +77,27 @@ class GameOfLifeEvolutionTest {
 
     assertThat(b.size()).as("generation sizes are equal").isEqualTo(a.size());
 
-    paintPattern(cellsFromBits( 5, 5, a, -1));
+    paintPattern(cellsFromBits(5, 5, a, -1));
 
     final int totalSize = a.size() + b.size();
 
-    final AtomicInteger validationOffset = new AtomicInteger(0);
+    final LongAdder validationOffset1 = new LongAdder();
 
-    final Disposable validation = validatePattern(cellsFromBits(5, 5,
-        b, 0), 0, validationOffset);
+    validatePattern(cellsFromBits(5, 5,
+        b, 0), 0, validationOffset1);
 
-    final Disposable validation2 = validatePattern(cellsFromBits(5, 5,
-        a, 1), 1, validationOffset);
+    final LongAdder validationOffset2 = new LongAdder();
 
-    driveSimulation(validationOffset, totalSize);
+    validatePattern(cellsFromBits(5, 5,
+        a, 1), 1, validationOffset2);
 
-    validation.dispose();
-    validation2.dispose();
+    driveSimulation(() ->
+        validationOffset1.longValue()+validationOffset2.longValue() >= totalSize);
   }
 
-  private List<Boolean> toPattern(final int ... bits) {
-    return Arrays.stream(bits).boxed().map(b->Integer.compare(b,1)==0).collect(Collectors.toList());
+  private List<Boolean> toPattern(final int... bits) {
+    return Arrays.stream(bits).boxed().map(b -> Integer.compare(b, 1) == 0)
+        .collect(Collectors.toList());
   }
 
   private List<Cell> cellsFromBits(final int columns, final int rows,
@@ -113,57 +105,62 @@ class GameOfLifeEvolutionTest {
     final ArrayList<Cell> cells = new ArrayList<>(columns * rows);
     for (int y = 0; y < rows; y++) {
       for (int x = 0; x < columns; x++) {
-        cells.add(gameOfLife.createCell(x,y,generation,bits.get(y*columns + x)));
+        cells.add(Cell.create(
+            gameOfLife.createCoordinate(x, y, generation),
+            bits.get(y * columns + x)));
       }
     }
     return cells;
   }
 
   private void paintPattern(final List<Cell> pattern) {
-    pattern.forEach(cell -> paintCell(cell));
+    Flux.fromIterable(pattern).delayUntil(cell -> gameState.put(Mono.just(cell)));
+    gameState.putAll(Flux.fromIterable(pattern));
   }
 
-  private Disposable validatePattern(final List<Cell> pattern, final int generation,
-                                        final AtomicInteger offset) {
+  private void validatePattern(final List<Cell> pattern, final int generation,
+                               final LongAdder offset) {
 
     final Iterator<Cell> patternCells = pattern.iterator();
 
-    return gameState.changes(Mono.just(generation))
-        //.subscribeOn(parallelScheduler) // this does not affect the thread used in subscribe()
-        .publishOn(parallelScheduler)   // this affects the thread used in subscribe()
-        .subscribe(
-            cell -> {
-              assertThat(patternCells.hasNext()).as("verify that test pattern is not too short")
-                  .isTrue();
-              final Cell expect = patternCells.next();
-              assertThat(cell).as("game cell maches expected pattern").isEqualTo(expect);
-              offset.getAndIncrement();
-              System.out.printf("✓ %s", Thread.currentThread().getName());
-            }
-            ,
-            error -> {
-              throw new TestAbortedException("game state changes flux produced error", error);
-            },
-            () -> assertThat(offset.get()).as("game produced as many cells as pattern")
-                .isEqualTo(pattern.size()));
+    gameState.changes(Mono.just(generation))
+        .publishOn(Schedulers.parallel())   // this affects the thread used in subscribe()
+        .subscribe(new BaseSubscriber<Cell>() {
+          @Override
+          protected void hookOnNext(final Cell cell) {
+            assertThat(patternCells.hasNext()).as("verify that test pattern is not too short")
+                .isTrue();
+            final Cell expect = patternCells.next();
+            assertThat(cell).as("game cell matches expected pattern").isEqualTo(expect);
+            offset.increment();
+          }
+
+          @Override
+          protected void hookOnComplete() {
+            System.out.printf("Query complete for generation %d%n",generation);
+            assertThat(offset.longValue()).as("game produced as many cells as pattern")
+                .isEqualTo(pattern.size());
+          }
+
+          @Override
+          protected void hookOnError(final Throwable throwable) {
+            throw new TestAbortedException("game state changes flux produced error", throwable);
+          }
+        });
   }
 
-  private void driveSimulation(final AtomicInteger offset, final int size)
+  private void driveSimulation(final BooleanSupplier isComplete)
       throws InterruptedException {
-    gameOfLife.getCells().take(size).subscribe(cell -> {
-      /*iterate for side effects*/
-    });
 
-    while (offset.get() < size)
+    gameOfLife.startGame();
+
+    while (! isComplete.getAsBoolean()) {
       Thread.sleep(10);
-  }
-
-  private void paintCell(final Cell cell) {
-    gameState.put(Mono.just(cell));
+    }
   }
 
   private GameOfLife configureGame(final int columns, final int rows) {
-    gameState = new GameStateLocal(columns, rows);
+    gameState = new GameStateHotChanges(columns, rows);
     gameOfLife = new GameOfLife(columns, rows, gameState);
     return gameOfLife;
   }

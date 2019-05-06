@@ -23,7 +23,14 @@ public class Coordinate {
   public static Coordinate create(final int offset,
                                   final int columns, final int rows) {
     final int generationSize = columns * rows;
-    final int generation = offset / generationSize;
+
+    final int generation;
+    if (offset < 0) {
+      generation = (offset - generationSize + 1) / generationSize;
+    } else {
+      generation = offset / generationSize;
+    }
+
     final int generationStart = generation * generationSize;
     final int y = (offset - generationStart)/columns;
     final int rowStart = generationStart + y * columns;
