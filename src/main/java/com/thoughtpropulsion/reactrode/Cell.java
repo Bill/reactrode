@@ -2,6 +2,9 @@ package com.thoughtpropulsion.reactrode;
 
 import java.util.Objects;
 
+/**
+ * A single cell in Conway's Game of Life.
+ */
 public class Cell {
   public final Coordinate coordinate;
   public final boolean isAlive;

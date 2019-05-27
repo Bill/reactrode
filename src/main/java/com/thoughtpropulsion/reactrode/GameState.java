@@ -3,6 +3,9 @@ package com.thoughtpropulsion.reactrode;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+/**
+ * A reactive cache for state for Conway's Game of Life.
+ */
 public interface GameState {
 
   /**

@@ -1,10 +1,11 @@
 package com.thoughtpropulsion.reactrode;
 
-import java.time.Duration;
-
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+/**
+ * Generate states for Conway's Game of Life.
+ */
 public class GameOfLife {
 
   public final CoordinateSystem coordinateSystem;
