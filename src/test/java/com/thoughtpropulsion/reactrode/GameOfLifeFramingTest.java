@@ -40,7 +40,7 @@ class GameOfLifeFramingTest {
   @ParameterizedTest
   @ValueSource(ints = {30})
   void producesNthCell(final int i) {
-    final Coordinate coordinate = Coordinate.create(i, COLUMNS, ROWS);
+    final Coordinate coordinate = gameOfLife.coordinateSystem.createCoordinate(i);
     testFraming(i,
         gameOfLife.createCoordinate(coordinate.x, coordinate.y, coordinate.generation));
   }
@@ -74,7 +74,7 @@ class GameOfLifeFramingTest {
   }
 
   private GameOfLife configureGame(final int columns, final int rows) {
-    gameState = new GameStateHotChanges(columns, rows);
+    gameState = new GameStateColdChanges(columns, rows);
     gameOfLife = new GameOfLife(columns, rows, gameState);
     return gameOfLife;
   }

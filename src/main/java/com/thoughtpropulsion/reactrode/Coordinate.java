@@ -1,5 +1,6 @@
 package com.thoughtpropulsion.reactrode;
 
+import java.util.Comparator;
 import java.util.Objects;
 
 /**
@@ -10,47 +11,32 @@ import java.util.Objects;
  * for liveness calculations. Since liveness of a cell is based on its (8) neighboring cells
  * having edges would require special case processing.
  */
-public class Coordinate {
+public class Coordinate implements Comparable<Coordinate> {
+
   public final int generation;
   public final int y;
   public final int x;
 
-  public static Coordinate create(final int x, final int y, final int generation,
-                                  final int columns, final int rows) {
-    return new Coordinate(x,y,generation,columns,rows);
+  private static final Comparator<Coordinate> COMPARATOR =
+      Comparator
+          .comparing((final Coordinate c) -> c.generation)
+          .thenComparing(c -> c.y)
+          .thenComparing(c -> c.x);
+
+  // for use by CoordinateSystem only
+  static Coordinate create(final int x, final int y, final int generation) {
+    return new Coordinate(x,y,generation);
   }
 
-  public static Coordinate create(final int offset,
-                                  final int columns, final int rows) {
-    final int generationSize = columns * rows;
-
-    final int generation;
-    if (offset < 0) {
-      generation = (offset - generationSize + 1) / generationSize;
-    } else {
-      generation = offset / generationSize;
-    }
-
-    final int generationStart = generation * generationSize;
-    final int y = (offset - generationStart)/columns;
-    final int rowStart = generationStart + y * columns;
-    final int x = offset - rowStart;
-    return new Coordinate(x,y, generation, columns, rows);
+  private Coordinate(final int x, final int y, final int generation) {
+    this.x = x; this.y = y; this.generation = generation;
   }
 
-  public static int toOffset(final int x, final int y, final int generation,
-                             final int columns, final int rows) {
-    return columns * (generation * rows + y) + x;
-  }
-
-  public int toOffset(final int columns, final int rows) {
-    return toOffset(x,y,generation,columns,rows);
-  }
-
-  private Coordinate(final int x, final int y, final int generation,
-                     final int columns, final int rows) {
-    // modulo arithmetic maps the coordinate parameters into canonical locations on the torus
-    this.x = x%columns; this.y = y%rows; this.generation = generation;
+  public static Coordinate max(final Coordinate a, final Coordinate b) {
+    if (a.compareTo(b) < 0)
+      return b;
+    else
+      return a;
   }
 
   @Override
@@ -80,5 +66,10 @@ public class Coordinate {
     sb.append(", x=").append(x);
     sb.append('}');
     return sb.toString();
+  }
+
+  @Override
+  public int compareTo(final Coordinate o) {
+    return COMPARATOR.compare(this,o);
   }
 }

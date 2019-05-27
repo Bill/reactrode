@@ -19,19 +19,18 @@ public class GameStateHotChanges implements GameState {
   static final int MAX_GENERATIONS_CAPACITY = 3;
   static final int DEFAULT_PUTALL_REQUEST_AMOUNT = 100;
 
+  private final CoordinateSystem coordinateSystem;
+
   // cells keyed on offset (see toOffset())
+  // TODO: consider making this a ring buffer!!! just need get(offset), put(offset,isAlive), size(), remove(offset)
   private Map<Integer, Boolean> cells = new ConcurrentHashMap<>();
 
   // key is generation, value is list of sinks for fluxes subscribed for that generation
   private ConcurrentNavigableMap<Integer, List<FluxSink<Cell>>>
       queries = new ConcurrentSkipListMap<>();
 
-  private final int columns; // x
-  private final int rows;    // y
-
   public GameStateHotChanges(final int columns, final int rows) {
-    this.columns = columns;
-    this.rows = rows;
+    coordinateSystem = new CoordinateSystem(columns, rows);
   }
 
   @Override
@@ -61,7 +60,8 @@ public class GameStateHotChanges implements GameState {
   @Override
   public Mono<Boolean> get(final Mono<Coordinate> coordinateMono) {
     return coordinateMono
-        .map(coordinate -> JavaLang.toBooleanNotNull(cells.get(toOffset(coordinate))));
+        .map(
+            coordinate -> JavaLang.toBooleanNotNull(cells.get(coordinateSystem.toOffset(coordinate))));
   }
 
   /**
@@ -75,10 +75,6 @@ public class GameStateHotChanges implements GameState {
         .flatMapMany(generation ->
             Flux.<Cell>create(sink ->
                 getQueriesForGeneration(generation).add(sink)));
-  }
-
-  private int toOffset(final Coordinate coordinate) {
-    return Coordinate.toOffset(coordinate.y, coordinate.x, coordinate.generation, columns, rows);
   }
 
   private BaseSubscriber<Boolean> createBackpressure() {
@@ -103,7 +99,7 @@ public class GameStateHotChanges implements GameState {
    */
   private Boolean put(final Cell cell) {
     return JavaLang.returning(
-        JavaLang.toBooleanNotNull(cells.put(toOffset(cell.coordinate), cell.isAlive)),
+        JavaLang.toBooleanNotNull(cells.put(coordinateSystem.toOffset(cell.coordinate), cell.isAlive)),
         oldIsAlive -> {
           // FIXME: we are not reacting to backpressure from query subscribers. Could we?
           distributeToQueriesHook(cell);
@@ -142,13 +138,10 @@ public class GameStateHotChanges implements GameState {
   private void gcHook(final Cell cell) {
     // remove corresponding cell from MAX_GENERATIONS_CAPACITY ago
     cells.remove(
-        Coordinate.create(
+        coordinateSystem.toOffset(
             cell.coordinate.x,
             cell.coordinate.y,
-            cell.coordinate.generation - MAX_GENERATIONS_CAPACITY,
-            columns,
-            rows)
-            .toOffset(columns, rows));
+            cell.coordinate.generation - MAX_GENERATIONS_CAPACITY));
   }
 
   /**
@@ -156,7 +149,7 @@ public class GameStateHotChanges implements GameState {
    * @return next request amount
    */
   private int nextRequest() {
-    final int generationSize = columns * rows;
+    final int generationSize = coordinateSystem.size();
     final int capacity = MAX_GENERATIONS_CAPACITY * generationSize;
     if (cells.size() < capacity) {
       return DEFAULT_PUTALL_REQUEST_AMOUNT;

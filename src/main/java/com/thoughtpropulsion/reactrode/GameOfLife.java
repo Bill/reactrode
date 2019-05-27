@@ -1,32 +1,51 @@
 package com.thoughtpropulsion.reactrode;
 
+import java.time.Duration;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public class GameOfLife {
 
-  public final int columns; // x
-  public final int rows;    // y
+  public final CoordinateSystem coordinateSystem;
   private final GameState gameState;
 
   public GameOfLife(final int columns, final int rows,
                     final GameState gameState) {
-    this.columns = columns; this.rows = rows; this.gameState = gameState;
+    coordinateSystem = new CoordinateSystem(columns, rows);
+    this.gameState = gameState;
   }
 
   public Coordinate createCoordinate(final int x, final int y, final int generation) {
-    return Coordinate.create(x, y, generation, columns, rows);
+    return coordinateSystem.createCoordinate(x, y, generation);
   }
 
   void startGame() {
+    // TODO: change this to subscribe here-- don't rely on putAll() to do it
+    // because that will eventually be in another VM!
     gameState.putAll(
         Flux.range(0, Integer.MAX_VALUE)
-            .map(offset -> Coordinate.create(offset, columns, rows))
+            .map(offset -> coordinateSystem.createCoordinate(offset))
             /*
              TODO: if/when we parallelize game state generation, we might want to allow
              some interleaving here via flatMap()
              */
             .flatMapSequential(this::nextGenerationFor));
+  }
+
+  void startGame2() {
+    // TODO: change this to subscribe here-- don't rely on putAll() to do it
+    // because that will eventually be in another VM!
+    Flux.range(0, Integer.MAX_VALUE)
+        .map(offset -> coordinateSystem.createCoordinate(offset))
+        /*
+         TODO: if/when we parallelize game state generation, we might want to allow
+         some interleaving here via flatMap()
+         */
+        .flatMapSequential(this::nextGenerationFor)
+        .log()
+        .flatMap(cell -> gameState.put(Mono.just(cell)), 5)
+        .subscribe();
   }
 
   private Mono<Cell> nextGenerationFor(final Coordinate coordinate) {
@@ -52,18 +71,18 @@ public class GameOfLife {
 
     final int previousGen = generation - 1;
 
-    return wasAliveCount(Coordinate.create(x - 1, y + 1, previousGen, columns, rows))
-        .mergeWith(wasAliveCount(Coordinate.create(x, y + 1, previousGen, columns, rows)))
-        .mergeWith(wasAliveCount(Coordinate.create(x + 1, y + 1, previousGen, columns, rows)))
+    return wasAliveCount(coordinateSystem.createCoordinate(x - 1, y + 1, previousGen))
+        .mergeWith(wasAliveCount(coordinateSystem.createCoordinate(x, y + 1, previousGen)))
+        .mergeWith(wasAliveCount(coordinateSystem.createCoordinate(x + 1, y + 1, previousGen)))
 
-        .mergeWith(wasAliveCount(Coordinate.create(x - 1, y, previousGen, columns, rows)))
-        .mergeWith(wasAliveCount(Coordinate.create(x + 1, y, previousGen, columns, rows)))
+        .mergeWith(wasAliveCount(coordinateSystem.createCoordinate(x - 1, y, previousGen)))
+        .mergeWith(wasAliveCount(coordinateSystem.createCoordinate(x + 1, y, previousGen)))
 
-        .mergeWith(wasAliveCount(Coordinate.create(x - 1, y - 1, previousGen, columns, rows)))
-        .mergeWith(wasAliveCount(Coordinate.create(x, y - 1, previousGen, columns, rows)))
-        .mergeWith(wasAliveCount(Coordinate.create(x + 1, y - 1, previousGen, columns, rows)))
+        .mergeWith(wasAliveCount(coordinateSystem.createCoordinate(x - 1, y - 1, previousGen)))
+        .mergeWith(wasAliveCount(coordinateSystem.createCoordinate(x, y - 1, previousGen)))
+        .mergeWith(wasAliveCount(coordinateSystem.createCoordinate(x + 1, y - 1, previousGen)))
         .reduce(0, (a, b) -> a + b)
-        .zipWith(wasAlive(Coordinate.create(x, y, previousGen, columns, rows)))
+        .zipWith(wasAlive(coordinateSystem.createCoordinate(x, y, previousGen)))
         .map((t2) -> {
           final int liveNeighbors = t2.getT1();
           final boolean wasAlive = t2.getT2();

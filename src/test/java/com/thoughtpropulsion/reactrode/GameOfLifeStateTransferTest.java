@@ -44,7 +44,7 @@ class GameOfLifeStateTransferTest {
   }
 
   private GameOfLife configureGame(final int columns, final int rows) {
-    gameState = new GameStateHotChanges(columns, rows);
+    gameState = new GameStateColdChanges(columns, rows);
     gameOfLife = new GameOfLife(columns, rows, gameState);
     return gameOfLife;
   }
