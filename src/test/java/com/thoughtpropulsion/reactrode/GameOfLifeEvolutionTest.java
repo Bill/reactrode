@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.LongAdder;
@@ -16,19 +17,19 @@ import org.opentest4j.TestAbortedException;
 import reactor.core.publisher.BaseSubscriber;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Hooks;
-import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 class GameOfLifeEvolutionTest {
 
-  private GameState gameState;
-  private GameOfLife gameOfLife;
+  private static int PRIMORDIAL_GENERATION = -1;
+  private static final int GENERATIONS_CACHED = 3;
+  private GameOfLifeSystem gameOfLifeSystem;
 
   @BeforeAll
   static void beforeAll() { Hooks.onOperatorDebug();}
 
   @Test
-  public void blockPatternTest() throws InterruptedException {
+  void blockPatternTest() throws InterruptedException {
 
     /*
       "block" is a 2x2 static form: it won't change generation-to-generation
@@ -36,7 +37,8 @@ class GameOfLifeEvolutionTest {
       This pattern is non-square to uncover bugs where row/column sense is inconsistent.
      */
 
-    configureGame(4, 5);
+    gameOfLifeSystem = GameOfLifeSystem.create(4, 5, GENERATIONS_CACHED,
+        PRIMORDIAL_GENERATION);
 
     final List<Boolean> pattern = toPattern(0, 0, 0, 0,
         0, 1, 1, 0,
@@ -45,24 +47,25 @@ class GameOfLifeEvolutionTest {
         0, 0, 0, 0);
 
     paintPattern(cellsFromBits(4, 5,
-        pattern, -1));
+        pattern, PRIMORDIAL_GENERATION));
 
     final LongAdder validationOffset = new LongAdder();
 
     validatePattern(cellsFromBits(4, 5,
-        pattern, 0), 0, validationOffset);
+        pattern, PRIMORDIAL_GENERATION + 1), 0, validationOffset);
 
     driveSimulation(()->validationOffset.longValue() >= pattern.size());
   }
 
   @Test
-  public void blinkerPatternTest() throws InterruptedException {
+  void blinkerPatternTest() throws InterruptedException {
 
     /*
      "blinker" is a form that oscillates with period 2.
      */
 
-    configureGame(5, 5);
+    gameOfLifeSystem = GameOfLifeSystem.create(5, 5, GENERATIONS_CACHED,
+        PRIMORDIAL_GENERATION);
 
     final List<Boolean> a = toPattern(0, 0, 0, 0, 0,
         0, 0, 0, 0, 0,
@@ -77,53 +80,53 @@ class GameOfLifeEvolutionTest {
 
     assertThat(b.size()).as("generation sizes are equal").isEqualTo(a.size());
 
-    paintPattern(cellsFromBits(5, 5, a, -1));
+    paintPattern(cellsFromBits(5, 5, a, PRIMORDIAL_GENERATION));
 
     final int totalSize = a.size() + b.size();
 
     final LongAdder validationOffset1 = new LongAdder();
 
     validatePattern(cellsFromBits(5, 5,
-        b, 0), 0, validationOffset1);
+        b, PRIMORDIAL_GENERATION + 1), 0, validationOffset1);
 
     final LongAdder validationOffset2 = new LongAdder();
 
     validatePattern(cellsFromBits(5, 5,
-        a, 1), 1, validationOffset2);
+        a, PRIMORDIAL_GENERATION + 2), 1, validationOffset2);
 
     driveSimulation(() ->
         validationOffset1.longValue()+validationOffset2.longValue() >= totalSize);
   }
 
   private List<Boolean> toPattern(final int... bits) {
-    return Arrays.stream(bits).boxed().map(b -> Integer.compare(b, 1) == 0)
+    return Arrays.stream(bits).boxed().map(b -> b == 1)
         .collect(Collectors.toList());
   }
 
   private List<Cell> cellsFromBits(final int columns, final int rows,
                                    final List<Boolean> bits, final int generation) {
-    final ArrayList<Cell> cells = new ArrayList<>(columns * rows);
+    final List<Cell> cells = new ArrayList<>(columns * rows);
     for (int y = 0; y < rows; y++) {
       for (int x = 0; x < columns; x++) {
         cells.add(Cell.create(
-            gameOfLife.createCoordinate(x, y, generation),
+            gameOfLifeSystem.getCoordinateSystem().createCoordinate(x, y, generation),
             bits.get(y * columns + x)));
       }
     }
     return cells;
   }
 
-  private void paintPattern(final List<Cell> pattern) {
-    Flux.fromIterable(pattern).delayUntil(cell -> gameState.put(Mono.just(cell)));
-    gameState.putAll(Flux.fromIterable(pattern));
+  private void paintPattern(final Iterable<Cell> pattern) {
+    Flux.fromIterable(pattern).delayUntil(cell -> gameOfLifeSystem.getGameState().put(cell));
+    gameOfLifeSystem.getGameState().putAll(Flux.fromIterable(pattern));
   }
 
-  private void validatePattern(final List<Cell> pattern, final int generation,
+  private void validatePattern(final Collection<Cell> pattern, final int generation,
                                final LongAdder offset) {
 
     final Iterator<Cell> patternCells = pattern.iterator();
 
-    gameState.changes(Mono.just(generation))
+    gameOfLifeSystem.getGameState().changes(generation)
         .publishOn(Schedulers.parallel())   // this affects the thread used in subscribe()
         .subscribe(new BaseSubscriber<Cell>() {
           @Override
@@ -152,17 +155,11 @@ class GameOfLifeEvolutionTest {
   private void driveSimulation(final BooleanSupplier isComplete)
       throws InterruptedException {
 
-    gameOfLife.startGame();
+    gameOfLifeSystem.startGame();
 
     while (! isComplete.getAsBoolean()) {
       Thread.sleep(10);
     }
-  }
-
-  private GameOfLife configureGame(final int columns, final int rows) {
-    gameState = new GameStateHotChanges(columns, rows);
-    gameOfLife = new GameOfLife(columns, rows, gameState);
-    return gameOfLife;
   }
 
 }

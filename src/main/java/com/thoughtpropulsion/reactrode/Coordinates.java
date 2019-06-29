@@ -4,31 +4,31 @@ import java.util.Comparator;
 import java.util.Objects;
 
 /**
- * This is a coordinate for a cell in Conway's Game of Life. Since we're modeling the game in an
- * immutable "event sourcing" style, the coordinate includes the generation, a time coordinate.
+ * These are coordinates for a cell in Conway's Game of Life. Since we're modeling the game in an
+ * immutable "event sourcing" style, the coordinates includes the generation, a time coordinates.
  */
-public class Coordinate implements Comparable<Coordinate> {
+public class Coordinates implements Comparable<Coordinates> {
 
   public final int generation;
   public final int y;
   public final int x;
 
-  private static final Comparator<Coordinate> COMPARATOR =
+  private static final Comparator<Coordinates> COMPARATOR =
       Comparator
-          .comparing((final Coordinate c) -> c.generation)
+          .comparing((final Coordinates c) -> c.generation)
           .thenComparing(c -> c.y)
           .thenComparing(c -> c.x);
 
   // for use by CoordinateSystem only
-  static Coordinate create(final int x, final int y, final int generation) {
-    return new Coordinate(x,y,generation);
+  static Coordinates create(final int x, final int y, final int generation) {
+    return new Coordinates(x,y,generation);
   }
 
-  private Coordinate(final int x, final int y, final int generation) {
+  private Coordinates(final int x, final int y, final int generation) {
     this.x = x; this.y = y; this.generation = generation;
   }
 
-  public static Coordinate max(final Coordinate a, final Coordinate b) {
+  public static Coordinates max(final Coordinates a, final Coordinates b) {
     if (a.compareTo(b) < 0)
       return b;
     else
@@ -43,10 +43,8 @@ public class Coordinate implements Comparable<Coordinate> {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    final Coordinate that = (Coordinate) o;
-    return generation == that.generation &&
-        y == that.y &&
-        x == that.x;
+    final Coordinates that = (Coordinates) o;
+    return compareTo(that) == 0;
   }
 
   @Override
@@ -56,7 +54,7 @@ public class Coordinate implements Comparable<Coordinate> {
 
   @Override
   public String toString() {
-    final StringBuffer sb = new StringBuffer("Coordinate{");
+    final StringBuilder sb = new StringBuilder("Coordinates{");
     sb.append("generation=").append(generation);
     sb.append(", y=").append(y);
     sb.append(", x=").append(x);
@@ -65,7 +63,7 @@ public class Coordinate implements Comparable<Coordinate> {
   }
 
   @Override
-  public int compareTo(final Coordinate o) {
+  public int compareTo(final Coordinates o) {
     return COMPARATOR.compare(this,o);
   }
 }

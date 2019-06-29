@@ -1,5 +1,7 @@
 package com.thoughtpropulsion.reactrode;
 
+import static com.thoughtpropulsion.reactrode.Functional.*;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -9,6 +11,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 import io.vavr.control.Option;
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
 import reactor.core.publisher.BaseSubscriber;
 import reactor.core.publisher.Flux;
@@ -16,6 +19,25 @@ import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
+/**
+ * An early (failed) attempt to provide a cold {@link Flux} of states via
+ * {@link GameState#changes(int)}.
+ *
+ * Storage is limited. Only states in the most recent generations are retained.
+ *
+ * When more space is needed, old states are discarded. Old states are discarded a generation
+ * at a time. No partial generations are maintained.
+ *
+ * A generation will not be disposed if outstanding queries are active for it. So we can have
+ * a situation where more space is needed but we cannot free it up (yet). In that case, inbound
+ * data flow (via the {@link Publisher} provided to {@link #putAll(Flux)} or {@link #put(Mono)}
+ * will be paused (via backpressure).
+ *
+ * Later, after one or more queries have completed (via cancellation, normal completion, or error),
+ * it may be possible to release a generation, thereby freeing up space. In that case backpressure
+ * will be relieved and messages will again be permitted to flow in.
+ *
+ */
 public class GameStateColdChanges implements GameState {
 
   static final int MAX_GENERATIONS_CAPACITY = 3;
@@ -29,7 +51,7 @@ public class GameStateColdChanges implements GameState {
   // key is generation, value is list of sinks for fluxes subscribed for that generation
   private ConcurrentNavigableMap<Integer, List<FluxSink<Cell>>> queries = new ConcurrentSkipListMap<>();
 
-  private final AtomicReference<Option<Coordinate>> highestOffsetCoordinate = new AtomicReference<>(Option.none());
+  private final AtomicReference<Option<Coordinates>> highestOffsetCoordinate = new AtomicReference<>(Option.none());
 
   public GameStateColdChanges(final int columns, final int rows) {
     coordinateSystem = new CoordinateSystem(columns, rows);
@@ -37,7 +59,7 @@ public class GameStateColdChanges implements GameState {
   }
 
   @Override
-  public Mono<Boolean> put(final Mono<Cell> cellMono) {
+  public Mono<Cell> put(final Mono<Cell> cellMono) {
 
     // could do something like this to show that the blocking code isn't going to block
     //return Mono.fromCallable(() -> put(cellMono.block())).subscribeOn(Schedulers.parallel());
@@ -49,8 +71,8 @@ public class GameStateColdChanges implements GameState {
     or delay (in time) responding e.g. proportional to space remaining
      */
     return
-        JavaLang.returning(
-            cellMono.map(this::put),
+        returning(
+            cellMono.flatMap(cell -> put(cell)),
             mappedCellMono ->
             /*
              As a side-effect (before returning the mapped mono) decouple from calling thread
@@ -63,17 +85,28 @@ public class GameStateColdChanges implements GameState {
   }
 
   @Override
+  public Mono<Cell> put(final Cell cellArg) {
+    return Mono.justOrEmpty(returning(
+        cellArg,
+        cell -> {
+          cells.put(coordinateSystem.toOffset(cell.coordinates), cell.isAlive);
+          System.out.printf("put(%s)%n", cell);
+          recordHighestOffsetHook(cell);
+          distributeToQueriesHook(cell);
+        }));
+  }
+
+  @Override
   public void putAll(final Flux<Cell> cellFlux) {
     cellFlux
-        .map(cell->put(cell))
+        .flatMap(cell -> put(cell))
         .subscribeOn(Schedulers.parallel())
         .subscribe(createBackpressuringSubscriber());
   }
 
   @Override
-  public Mono<Boolean> get(final Mono<Coordinate> coordinateMono) {
-    return coordinateMono.map(
-        coordinate -> JavaLang.toBooleanNotNull(cells.get(coordinateSystem.toOffset(coordinate))));
+  public Mono<Boolean> get(final Coordinates coordinates) {
+    return Mono.justOrEmpty(cells.get(coordinateSystem.toOffset(coordinates)));
   }
 
   /**
@@ -84,40 +117,50 @@ public class GameStateColdChanges implements GameState {
    * if cells arrive and we have outstanding queries for old generations we can't just complete
    * those old queries (fluxes) because they might still have cells to deliver.
    *
-   * Contrast with {@link GameStateHotChanges#changes(Mono)} where we can complete the old queries
+   * Contrast with {@link GameState#changes(int)} where we can complete the old queries
    * (fluxes) whenever we are sure we aren't going to see any new cells matching the query's
    * generation criterion.
    *
-   * @param generationMono
+   * @param generation
    * @return
    *
    * @see {@link #distributeToQueriesHook(Cell)}
    */
   @Override
-  public Flux<Cell> changes(final Mono<Integer> generationMono) {
-    return generationMono
-        .flatMapMany(generation ->
-          highestCompleteGeneration()
-              .flatMap(highestComplete -> highestComplete < generation ? Option.none() : Option.some(generation))
-              .map(highestComplete ->
-                  // a flux that can start producing items right now
-                  createColdQueryFlux(generation))
-              .getOrElse(
+  public Flux<Cell> changes(final int generation) {
+    return highestCompleteGeneration()
+        .flatMap(highestComplete -> highestComplete < generation ? Option.none()
+            : Option.some(generation))
+        .map(highestComplete ->
+            // a flux that can start producing items right now
+            createColdQueryFlux(generation))
+        .getOrElse(
                   /*
                    A flux for which we have captured the sink. Some thread will produce to that sink
                    after {@code generation} is ready.
                    */
-                  () -> Flux.create(sink -> getQueriesForGeneration(generation).add(sink)))); // flatMapMany
+            () -> Flux.create(sink -> getQueriesForGeneration(generation).add(sink))); // flatMapMany
+  }
+
+  @Override
+  public Flux<Flux<Cell>> generations(final int generation) {
+    return null;
   }
 
   private Flux<Cell> createColdQueryFlux(final Integer generation) {
-    return Flux.<Cell, Coordinate>generate(
+    return Flux.<Cell, Coordinates>generate(
         ()->coordinateSystem.createCoordinate(0,0,generation),
         (coordinate,sink)-> {
           if (coordinate.generation > generation) {
             sink.complete();
+          } else {
+            /*
+             Danger! While this class is designed so that in this case, cells.get() will not
+             return null, nevertheless, per the Java type system, cells.get() can return null.
+             If a null is returned then sink.next() will barf on it.
+             */
+            sink.next(Cell.create(coordinate, cells.get(coordinate)));
           }
-          sink.next(Cell.create(coordinate, JavaLang.toBooleanNotNull(cells.get(coordinate))));
           return inc(coordinate);
         })
         .doOnComplete(() -> {
@@ -129,49 +172,30 @@ public class GameStateColdChanges implements GameState {
         });
   }
 
-  private Coordinate inc(final Coordinate coordinate) {
+  private Coordinates inc(final Coordinates coordinates) {
     return coordinateSystem.createCoordinate(
-        coordinateSystem.toOffset(coordinate) + 1);
+        coordinateSystem.toOffset(coordinates) + 1);
   }
 
-  private BaseSubscriber<Boolean> createBackpressuringSubscriber() {
-    return new BaseSubscriber<Boolean>() {
+  private BaseSubscriber<Cell> createBackpressuringSubscriber() {
+    return new BaseSubscriber<Cell>() {
       @Override
       protected void hookOnSubscribe(final Subscription subscription) {
         request(nextRequest());
       }
       @Override
-      protected void hookOnNext(final Boolean oldIsAlive) {
+      protected void hookOnNext(final Cell oldIsAlive) {
         request(nextRequest());
       }
     };
   }
 
-  /**
-   * Imperative logic associated w/ {@link #put(Mono)} and {@link #putAll(Flux)}
-   *
-   * N.B. that this method must not return a null reference lest it run afoul of Reactor
-   * {@code map()} constraints.
-   *
-   * @param cell
-   * @return
-   */
-  private Boolean put(final Cell cell) {
-    return JavaLang.returning(
-        JavaLang.toBooleanNotNull(cells.put(coordinateSystem.toOffset(cell.coordinate), cell.isAlive)),
-        oldIsAlive -> {
-          System.out.printf("put(%s)%n",cell);
-          recordHighestOffsetHook(cell);
-          distributeToQueriesHook(cell);
-        });
-  }
-
   private void recordHighestOffsetHook(final Cell cell) {
     highestOffsetCoordinate.updateAndGet(
         oldHighest -> Option.some(
-          Coordinate.max(
-              oldHighest.getOrElse(cell.coordinate),
-              cell.coordinate)));
+          Coordinates.max(
+              oldHighest.getOrElse(cell.coordinates),
+              cell.coordinates)));
   }
 
   private Option<Integer> highestCompleteGeneration() {
@@ -225,6 +249,10 @@ public class GameStateColdChanges implements GameState {
     final int generationSize = coordinateSystem.size();
     final int capacity = MAX_GENERATIONS_CAPACITY * generationSize;
     cellsDemanded = Math.max(0, capacity - cells.size());
+
+    cellsDemanded = Math.min(1,cellsDemanded);
+
+    System.out.println("demanding: " + cellsDemanded);
     return cellsDemanded;
   }
 

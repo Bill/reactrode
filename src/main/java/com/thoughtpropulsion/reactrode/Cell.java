@@ -6,15 +6,15 @@ import java.util.Objects;
  * A single cell in Conway's Game of Life.
  */
 public class Cell {
-  public final Coordinate coordinate;
+  public final Coordinates coordinates;
   public final boolean isAlive;
 
-  public static Cell create(final Coordinate coordinate, final boolean isAlive) {
-    return new Cell(coordinate,isAlive);
+  public static Cell create(final Coordinates coordinates, final boolean isAlive) {
+    return new Cell(coordinates,isAlive);
   }
 
-  private Cell(final Coordinate coordinate, final boolean isAlive) {
-    this.coordinate = coordinate; this.isAlive = isAlive;
+  private Cell(final Coordinates coordinates, final boolean isAlive) {
+    this.coordinates = coordinates; this.isAlive = isAlive;
   }
 
   @Override
@@ -27,18 +27,18 @@ public class Cell {
     }
     final Cell cell = (Cell) o;
     return isAlive == cell.isAlive &&
-        coordinate.equals(cell.coordinate);
+        coordinates.equals(cell.coordinates);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(coordinate, isAlive);
+    return Objects.hash(coordinates, isAlive);
   }
 
   @Override
   public String toString() {
-    final StringBuffer sb = new StringBuffer("Cell{");
-    sb.append("coordinate=").append(coordinate);
+    final StringBuilder sb = new StringBuilder("Cell{");
+    sb.append("coordinates=").append(coordinates);
     sb.append(", isAlive=").append(isAlive);
     sb.append('}');
     return sb.toString();

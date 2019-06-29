@@ -1,5 +1,7 @@
 package com.thoughtpropulsion.reactrode;
 
+import static com.thoughtpropulsion.reactrode.Functional.returning;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -16,17 +18,17 @@ import reactor.core.scheduler.Schedulers;
 
 public class GameStateHotChanges implements GameState {
 
-  static final int MAX_GENERATIONS_CAPACITY = 3;
-  static final int DEFAULT_PUTALL_REQUEST_AMOUNT = 100;
+  private static final int MAX_GENERATIONS_CAPACITY = 3;
+  private static final int DEFAULT_PUTALL_REQUEST_AMOUNT = 100;
 
   private final CoordinateSystem coordinateSystem;
 
   // cells keyed on offset (see toOffset())
   // TODO: consider making this a ring buffer!!! just need get(offset), put(offset,isAlive), size(), remove(offset)
-  private Map<Integer, Boolean> cells = new ConcurrentHashMap<>();
+  private final Map<Integer, Boolean> cells = new ConcurrentHashMap<>();
 
   // key is generation, value is list of sinks for fluxes subscribed for that generation
-  private ConcurrentNavigableMap<Integer, List<FluxSink<Cell>>>
+  private final ConcurrentNavigableMap<Integer, List<FluxSink<Cell>>>
       queries = new ConcurrentSkipListMap<>();
 
   public GameStateHotChanges(final int columns, final int rows) {
@@ -34,10 +36,10 @@ public class GameStateHotChanges implements GameState {
   }
 
   @Override
-  public Mono<Boolean> put(final Mono<Cell> cellMono) {
+  public Mono<Cell> put(final Mono<Cell> cellMono) {
     return
-        JavaLang.returning(
-            cellMono.map(this::put),
+        returning(
+            cellMono.flatMap(cell-> putImperative(cell)),
             mappedCellMono ->
             /*
              As a side-effect (before returning the mapped mono) decouple from calling thread
@@ -50,42 +52,49 @@ public class GameStateHotChanges implements GameState {
   }
 
   @Override
+  public Mono<Cell> put(final Cell cell) {
+    return putImperative(cell);
+  }
+
+  @Override
   public void putAll(final Flux<Cell> cellFlux) {
     cellFlux
-        .map(cell -> put(cell))
+        .flatMap(cell -> putImperative(cell))
         .subscribeOn(Schedulers.parallel())
         .subscribe(createBackpressure());
   }
 
   @Override
-  public Mono<Boolean> get(final Mono<Coordinate> coordinateMono) {
-    return coordinateMono
-        .map(
-            coordinate -> JavaLang.toBooleanNotNull(cells.get(coordinateSystem.toOffset(coordinate))));
+  public Mono<Boolean> get(final Coordinates coordinates) {
+    return Mono.justOrEmpty(cells.get(coordinateSystem.toOffset(coordinates)));
   }
 
   /**
    * This implementation of the queries flux is hot. Cells are distributed to these hot fluxes as
    * they arrive (via various Reactive put methods).
    * @see {@link #distributeToQueriesHook(Cell)} and {@link #completeOldQueriesHook(Cell)}
+   * @param generation
    */
   @Override
-  public Flux<Cell> changes(final Mono<Integer> generationMono) {
-    return generationMono
-        .flatMapMany(generation ->
-            Flux.<Cell>create(sink ->
-                getQueriesForGeneration(generation).add(sink)));
+  public Flux<Cell> changes(final int generation) {
+    return Flux.<Cell>create(sink ->
+                getQueriesForGeneration(generation).add(sink));
   }
 
-  private BaseSubscriber<Boolean> createBackpressure() {
-    return new BaseSubscriber<Boolean>() {
+  @Override
+  public Flux<Flux<Cell>> generations(final int generation) {
+    return null;
+  }
+
+  private BaseSubscriber<Cell> createBackpressure() {
+    return new BaseSubscriber<Cell>() {
       @Override
       protected void hookOnSubscribe(final Subscription subscription) {
         request(nextRequest());
       }
 
       @Override
-      protected void hookOnNext(final Boolean oldIsAlive) {
+      protected void hookOnNext(final Cell oldIsAlive) {
         request(nextRequest());
       }
     };
@@ -93,25 +102,23 @@ public class GameStateHotChanges implements GameState {
 
   /**
    * Imperative logic associated w/ {@link #put(Mono)} and {@link #putAll(Flux)}
-   *
-   * N.B. that this method must not return a null reference lest it run afoul of Reactor {@code
-   * map()} constraints.
    */
-  private Boolean put(final Cell cell) {
-    return JavaLang.returning(
-        JavaLang.toBooleanNotNull(cells.put(coordinateSystem.toOffset(cell.coordinate), cell.isAlive)),
-        oldIsAlive -> {
+  private Mono<Cell> putImperative(final Cell cellArg) {
+    return Mono.justOrEmpty(returning(
+        cellArg,
+        cell -> {
+          cells.put(coordinateSystem.toOffset(cell.coordinates), cell.isAlive);
           // FIXME: we are not reacting to backpressure from query subscribers. Could we?
           distributeToQueriesHook(cell);
           completeOldQueriesHook(cell);
           gcHook(cell);
-        });
+        }));
   }
 
   private void distributeToQueriesHook(final Cell cell) {
     final List<FluxSink<Cell>>
         queriesForGeneration =
-        getQueriesForGeneration(cell.coordinate.generation);
+        getQueriesForGeneration(cell.coordinates.generation);
     queriesForGeneration.forEach(sink -> sink.next(cell));
   }
 
@@ -124,9 +131,9 @@ public class GameStateHotChanges implements GameState {
    * miss the last cell of their generation.
    */
   private void completeOldQueriesHook(final Cell cell) {
-    if (cell.coordinate.x == 0 && cell.coordinate.y == 0) {
+    if (cell.coordinates.x == 0 && cell.coordinates.y == 0) {
       final Map<Integer, List<FluxSink<Cell>>>
-          expiredGenerations = queries.headMap(cell.coordinate.generation, false);
+          expiredGenerations = queries.headMap(cell.coordinates.generation, false);
       expiredGenerations.forEach((generation, expiredQueries) ->
           expiredQueries.forEach(sink -> sink.complete()));
     }
@@ -139,9 +146,9 @@ public class GameStateHotChanges implements GameState {
     // remove corresponding cell from MAX_GENERATIONS_CAPACITY ago
     cells.remove(
         coordinateSystem.toOffset(
-            cell.coordinate.x,
-            cell.coordinate.y,
-            cell.coordinate.generation - MAX_GENERATIONS_CAPACITY));
+            cell.coordinates.x,
+            cell.coordinates.y,
+            cell.coordinates.generation - MAX_GENERATIONS_CAPACITY));
   }
 
   /**

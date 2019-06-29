@@ -6,14 +6,15 @@ Just getting started here. See the tests.
 
 ## TODO
 
-* ~~backpressure on `GameStateHotChanges.putAll(Flux)` and `GameStateHotChanges.put(Mono)`~~
-* ~~`GameStateHotChanges.changes()` ages out old cells~~
+* fix `GameOfLifeFramingTest`: `GamStateWithBackpressure.put()` needs to advance window
+* delete `GameStateColdChanges`&mdash;it's superseded by `GameStateWithBackpressure`
 * make `GameStateColdChanges.changes()` produce a cold flux so no buffering is needed
 * make a visualization: maybe an RSocket client for JavaScript or something
 * enable BlockHound https://github.com/reactor/BlockHound
 * implement `GameState` with Apache Geode
 * &hellip; profit!
-* compose-in a `CoordinateSystem` class to encapsulate dimensions (columns, rows) and wrap computations that need them
+* Deterministic testing: hook the Reactor scheduler to control choices, dial down to a single thread, eliminate Thread.sleep()s
+* side project: figure out how to make `Mono<Cell> put(final Mono<Cell> cellMono)` work analogously to its Flux counterpart
 
 ## Questions
 

@@ -5,77 +5,60 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Hooks;
-import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.util.concurrent.atomic.AtomicReference;
+import reactor.test.StepVerifier;
 
 class GameOfLifeFramingTest {
 
+  private static int PRIMORDIAL_GENERATION = -1;
   // make the board non-square to catch bugs where the row/column sense is inconsistent
   private static final int COLUMNS = 8;
   private static final int ROWS = 4;
-  private static final int GENERATION_SIZE = COLUMNS * ROWS;
+  private static final int GENERATIONS_CACHED = 3;
 
-  private GameOfLife gameOfLife;
-  private GameState gameState;
+  private GameOfLifeSystem gameOfLifeSystem;
 
   @BeforeAll
   static void beforeAll() { Hooks.onOperatorDebug();}
 
   @BeforeEach
   void beforeEach() {
-    configureGame(COLUMNS, ROWS);
-  }
-
-  @Test
-  void producesFirstCell() {
-    testFraming(0,
-        gameOfLife.createCoordinate(0, 0, 0));
+    gameOfLifeSystem = GameOfLifeSystem.create(COLUMNS, ROWS, GENERATIONS_CACHED,
+        PRIMORDIAL_GENERATION);
+    SystemTestSupport.initializePrimordialGeneration(gameOfLifeSystem);
   }
 
   @ParameterizedTest
-  @ValueSource(ints = {30})
+  @ValueSource(ints = {0,1,2,3})
   void producesNthCell(final int i) {
-    final Coordinate coordinate = gameOfLife.coordinateSystem.createCoordinate(i);
-    testFraming(i,
-        gameOfLife.createCoordinate(coordinate.x, coordinate.y, coordinate.generation));
+    testFraming(i);
   }
 
   @Test
-  void incrementsRowAndColumn() {
-    testFraming(GENERATION_SIZE-1,
-        gameOfLife.createCoordinate(COLUMNS-1,ROWS-1,0));
+  void producesEndOfFirstGeneration() {
+    testFraming(gameOfLifeSystem.getCoordinateSystem().size() - 1);
   }
 
   @Test
-  void producesSecondGeneration() {
-    testFraming(0,
-        gameOfLife.createCoordinate(0,0,1));
+  void producesBeginningOfSecondGeneration() {
+    testFraming(gameOfLifeSystem.getCoordinateSystem().size());
   }
 
-  private void testFraming(final int skip, final Coordinate expected) {
-    // FIXME: this fails a lot because there is a race between the changes flux and the flux feeding the game state
-    final AtomicReference<Cell> took = new AtomicReference<>();
-    gameState.changes(Mono.just(expected.generation)).skip(skip).take(1).doOnNext(took::set).publishOn(
-        Schedulers.parallel()).subscribe();
-    gameOfLife.startGame();
-    while (null == took.get()) {
-      try {
-        Thread.sleep(10);
-      } catch (InterruptedException e) {
-      }
-    }
-    assertThat(took.get()).isNotNull();
-    assertThat(took.get().coordinate).isEqualTo(expected);
+  private void testFraming(final int skip) {
+    final CoordinateSystem cs = gameOfLifeSystem.getCoordinateSystem();
+    final Coordinates expected = cs.createCoordinate(skip);
+    final int offset = expected.x + expected.y * cs.columns;
+
+    final Flux<Cell> changes = gameOfLifeSystem.getGameState().changes(expected.generation).skip(offset).take(1);
+
+    gameOfLifeSystem.startGame();
+
+    StepVerifier.create(changes)
+        .expectNextMatches(got -> got.coordinates.equals(expected))
+        .as("matches " + expected)
+        .expectComplete()
+        .verify();
   }
 
-  private GameOfLife configureGame(final int columns, final int rows) {
-    gameState = new GameStateColdChanges(columns, rows);
-    gameOfLife = new GameOfLife(columns, rows, gameState);
-    return gameOfLife;
-  }
 }

@@ -2,16 +2,16 @@ package com.thoughtpropulsion.reactrode;
 
 /**
  * Maps cartesian coordinates into the range (0 to {@code columns}, 0 to {@code rows}. Coordinates
- * outside that range are are wrapped via a torroidal mapping.
+ * outside that range are are wrapped via a toroidal mapping.
  *
- * The torroidal mapping solves problems for liveness calculations. Since liveness of a cell is
+ * The toroidal mapping solves problems for liveness calculations. Since liveness of a cell is
  * based on its (8) neighboring cells having edges would require special case processing.
  *
- * The coordinate system is used to construct {@link Coordinate} objects and also to calculate
+ * The coordinates system is used to construct {@link Coordinates} objects and also to calculate
  * integer offsets for them.
  *
- * This abstraction is imperfect. {@link Coordinate}s do not remember their {@link
- * CoordinateSystem}. It is possible to create a {@link Coordinate} via one {@link CoordinateSystem}
+ * This abstraction is imperfect. {@link Coordinates}s do not remember their {@link
+ * CoordinateSystem}. It is possible to create a {@link Coordinates} via one {@link CoordinateSystem}
  * and then e.g. calculate its offset via a different {@link CoordinateSystem}. Don't do that.
  */
 public class CoordinateSystem {
@@ -23,12 +23,12 @@ public class CoordinateSystem {
     this.rows = rows;
   }
 
-  public Coordinate createCoordinate(final int x, final int y, final int generation) {
-    // modular arithmetic maps the coordinate parameters into the torus
-    return Coordinate.create(x % columns, y % rows, generation);
+  public Coordinates createCoordinate(final int x, final int y, final int generation) {
+    // modular arithmetic maps the coordinates parameters into the torus
+    return Coordinates.create(Math.floorMod(x,columns), Math.floorMod(y,rows), generation);
   }
 
-  public Coordinate createCoordinate(final int offset) {
+  public Coordinates createCoordinate(final int offset) {
     final int generationSize = columns * rows;
 
     final int generation;
@@ -42,11 +42,11 @@ public class CoordinateSystem {
     final int y = (offset - generationStart) / columns;
     final int rowStart = generationStart + y * columns;
     final int x = offset - rowStart;
-    return Coordinate.create(x, y, generation);
+    return Coordinates.create(x, y, generation);
   }
 
-  public int toOffset(final Coordinate coordinate) {
-    return toOffset(coordinate.x, coordinate.y, coordinate.generation);
+  public int toOffset(final Coordinates coordinates) {
+    return toOffset(coordinates.x, coordinates.y, coordinates.generation);
   }
 
   public int toOffset(final int x, final int y, final int generation) {
