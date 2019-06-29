@@ -5,19 +5,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.LongAdder;
-import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.opentest4j.TestAbortedException;
-import reactor.core.publisher.BaseSubscriber;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Hooks;
-import reactor.core.scheduler.Schedulers;
+import reactor.test.StepVerifier;
 
 class GameOfLifeEvolutionTest {
 
@@ -52,9 +48,7 @@ class GameOfLifeEvolutionTest {
     final LongAdder validationOffset = new LongAdder();
 
     validatePattern(cellsFromBits(4, 5,
-        pattern, PRIMORDIAL_GENERATION + 1), 0, validationOffset);
-
-    driveSimulation(()->validationOffset.longValue() >= pattern.size());
+        pattern, PRIMORDIAL_GENERATION + 1), 0);
   }
 
   @Test
@@ -82,20 +76,14 @@ class GameOfLifeEvolutionTest {
 
     paintPattern(cellsFromBits(5, 5, a, PRIMORDIAL_GENERATION));
 
-    final int totalSize = a.size() + b.size();
-
     final LongAdder validationOffset1 = new LongAdder();
 
     validatePattern(cellsFromBits(5, 5,
-        b, PRIMORDIAL_GENERATION + 1), 0, validationOffset1);
-
-    final LongAdder validationOffset2 = new LongAdder();
+        b, PRIMORDIAL_GENERATION + 1), 0);
 
     validatePattern(cellsFromBits(5, 5,
-        a, PRIMORDIAL_GENERATION + 2), 1, validationOffset2);
+        a, PRIMORDIAL_GENERATION + 2), 1);
 
-    driveSimulation(() ->
-        validationOffset1.longValue()+validationOffset2.longValue() >= totalSize);
   }
 
   private List<Boolean> toPattern(final int... bits) {
@@ -121,45 +109,16 @@ class GameOfLifeEvolutionTest {
     gameOfLifeSystem.getGameState().putAll(Flux.fromIterable(pattern));
   }
 
-  private void validatePattern(final Collection<Cell> pattern, final int generation,
-                               final LongAdder offset) {
+  private void validatePattern(final Collection<Cell> pattern, final int generationNumber) {
 
-    final Iterator<Cell> patternCells = pattern.iterator();
-
-    gameOfLifeSystem.getGameState().changes(generation)
-        .publishOn(Schedulers.parallel())   // this affects the thread used in subscribe()
-        .subscribe(new BaseSubscriber<Cell>() {
-          @Override
-          protected void hookOnNext(final Cell cell) {
-            assertThat(patternCells.hasNext()).as("verify that test pattern is not too short")
-                .isTrue();
-            final Cell expect = patternCells.next();
-            assertThat(cell).as("game cell matches expected pattern").isEqualTo(expect);
-            offset.increment();
-          }
-
-          @Override
-          protected void hookOnComplete() {
-            System.out.printf("Query complete for generation %d%n",generation);
-            assertThat(offset.longValue()).as("game produced as many cells as pattern")
-                .isEqualTo(pattern.size());
-          }
-
-          @Override
-          protected void hookOnError(final Throwable throwable) {
-            throw new TestAbortedException("game state changes flux produced error", throwable);
-          }
-        });
-  }
-
-  private void driveSimulation(final BooleanSupplier isComplete)
-      throws InterruptedException {
+    final Flux<Cell> generation = gameOfLifeSystem.getGameState().changes(generationNumber);
 
     gameOfLifeSystem.startGame();
 
-    while (! isComplete.getAsBoolean()) {
-      Thread.sleep(10);
-    }
+    StepVerifier.create(generation)
+        .expectNextSequence(pattern)
+        .expectComplete()
+        .verify();
   }
 
 }
