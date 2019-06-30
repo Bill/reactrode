@@ -44,14 +44,8 @@ public interface GameState {
    */
   Mono<Boolean> get(final Coordinates key);
 
-  /**
-   *
-   * @param generation the generation of interest
-   * @return the sequence of changes (@{link Cell}s) for {@param generation}. Some implementations
-   * produce a hot flux and others produce a cold one.
-   */
   Flux<Cell> changes(int generation);
 
-  Flux<Flux<Cell>> generations(final int generation);
+  Flux<Generation> generations();
 
 }

@@ -143,7 +143,7 @@ public class GameStateColdChanges implements GameState {
   }
 
   @Override
-  public Flux<Flux<Cell>> generations(final int generation) {
+  public Flux<Generation> generations() {
     return null;
   }
 

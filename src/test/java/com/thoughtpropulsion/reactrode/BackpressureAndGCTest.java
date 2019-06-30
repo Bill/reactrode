@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -104,25 +105,69 @@ class BackpressureAndGCTest {
 
     final int range = GENERATIONS_CACHED + 1;
 
+    final Flux<Generation> generations =
+        gameOfLifeSystem.getGameState().generations().take(range);
+
+    // we'll first verify range generations, then we'll verify one more
+    generate(PRIMORDIAL_GENERATION, range + 1);
+
+    StepVerifier.create(generations)
+        .expectNextCount(range)
+        .expectComplete()
+        .verify();
+
+    final Flux<Generation> generations2 =
+        gameOfLifeSystem.getGameState().generations().take(1);
+
+    StepVerifier.create(generations2)
+        .assertNext(generation ->{
+          assertThat(generation.number).isEqualTo(PRIMORDIAL_GENERATION + range);
+        })
+        .expectComplete()
+        .verify();
+
+  }
+
+  @Test
+  void withoutSubscribersWindowAdvancesAndAllCellsAreProduced() {
+
+    final int range = GENERATIONS_CACHED + 1;
+
+    final Flux<Generation> generations =
+        gameOfLifeSystem.getGameState().generations().take(range);
+
     generate(PRIMORDIAL_GENERATION, range);
 
-    for(int i = 0; i < range; ++i) {
-      final int generation = i + PRIMORDIAL_GENERATION;
-      verifyOneGeneration(gameOfLifeSystem.getGameState()
-              .changes(generation),
-          "generation " + generation + " is available");
-    }
+    final Consumer<Generation> validateGeneration = generation ->
+        StepVerifier.create(generation.cells)
+            .expectNextCount(gameOfLifeSystem.getCoordinateSystem().size())
+            .as("a full generation-worth of cells")
+            .expectComplete()
+            .verify();
+
+    /*
+     We've hard-coded for 4 generations in our verification below. If range is not 4
+     it is not the fault of the UUT (unit-under-test), hence the bare assert here
+     */
+    assert range == 4;
+
+    StepVerifier.create(generations)
+        .consumeNextWith(validateGeneration)
+        .consumeNextWith(validateGeneration)
+        .consumeNextWith(validateGeneration)
+        .consumeNextWith(validateGeneration)
+        .expectComplete()
+        .verify();
   }
 
   @Disabled
   @Test
-  void producerIsThrottled() {
-    // if a subscription has not completed for oldest generation, producer (GameOfLife) is throttled
+  void gameIsThrottled() {
   }
 
   @Disabled
   @Test
-  void producerResumesAfterThrottling() {
+  void gameResumesAfterThrottling() {
     // after producer (GameOfLife) is throttled, destroying subscription to oldest generation
     // causes resumption
   }

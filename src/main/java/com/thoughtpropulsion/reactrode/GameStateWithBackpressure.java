@@ -1,6 +1,8 @@
 package com.thoughtpropulsion.reactrode;
 
 import java.time.Duration;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.NavigableMap;
 import java.util.SortedMap;
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -11,6 +13,7 @@ import io.vavr.control.Option;
 import org.reactivestreams.Subscription;
 import reactor.core.publisher.BaseSubscriber;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.ReplayProcessor;
 import reactor.core.scheduler.Schedulers;
@@ -94,7 +97,10 @@ public class GameStateWithBackpressure implements GameState {
    */
   private final RingBufferSequential<ReplayProcessor<Cell>> changes;
 
-  private final NavigableMap<Integer, Boolean> cellsCache = new ConcurrentSkipListMap<>();
+  private final NavigableMap<Integer, Boolean> cellsCache;
+
+  private final Flux<Generation> generations;
+  private final Collection<FluxSink<Generation>> generationsEmitters;
 
   public GameStateWithBackpressure(final int generationsCached,
                                    final CoordinateSystem coordinateSystem,
@@ -123,6 +129,14 @@ public class GameStateWithBackpressure implements GameState {
     for (int i = 0; i < generationsCached; ++i) {
       changes.offer(createReplayProcessor());
     }
+
+    cellsCache = new ConcurrentSkipListMap<>();
+
+    generationsEmitters = new HashSet<>();
+    generations = Flux.create(emitter -> {
+      generationsEmitters.add(emitter);
+      emitter.onDispose(() -> generationsEmitters.remove(emitter));
+    });
   }
 
   @Override
@@ -135,10 +149,10 @@ public class GameStateWithBackpressure implements GameState {
    * is on success, otherwise error. This method supports adding cells in any order,
    * so long as the cells are in range of the buffer.
    *
-   * When the last cell for the youngest frame arrives, it triggers a window shift,
-   * i.e. destruction of the oldest frame, and creation of a new youngest frame.
-   * That is, unless subscriptions are outstanding to the oldest frame. In that case
-   * the oldest frame is kept alive until its subscribers are all complete.
+   * When the last cell for the youngest generation arrives, it triggers a window shift,
+   * i.e. destruction of the oldest generation, and creation of a new youngest generation.
+   * That is, unless subscriptions are outstanding to the oldest generation. In that case
+   * the oldest generation is kept alive until its subscribers are all complete.
    * After they complete, the window will shift and processing will continue.
    *
    * @param cell
@@ -159,6 +173,10 @@ public class GameStateWithBackpressure implements GameState {
           replayProcessor.onNext(cell);
           if (isGenerationComplete(generation, cell)) {
             replayProcessor.onComplete();
+            for(FluxSink<Generation> emitter:generationsEmitters) {
+              System.out.println("emitting generation " + generation);
+              emitter.next(Generation.create(generation, replayProcessor));
+            }
           }
         })
         .map(_ignoredReplayProcessor -> Mono.just(cell))
@@ -190,12 +208,8 @@ public class GameStateWithBackpressure implements GameState {
   }
 
   @Override
-  public Flux<Flux<Cell>> generations(final int startingGeneration) {
-    return Flux.generate(()->startingGeneration, (generation,sink) -> {
-      final Option<ReplayProcessor<Cell>> processors = changes.peek(generation);
-
-      return generation + 1;
-    });
+  public Flux<Generation> generations() {
+    return generations;
   }
 
   private boolean isGenerationComplete(final int _generation, final Cell cell) {
@@ -214,20 +228,20 @@ public class GameStateWithBackpressure implements GameState {
   }
 
   private BaseSubscriber<Cell> createSubscriber() {
-    return new FrameAtATimeSubscriber();
+    return new GenerationAtATimeSubscriber();
   }
 
-  private class FrameAtATimeSubscriber extends BaseSubscriber<Cell> {
+  private class GenerationAtATimeSubscriber extends BaseSubscriber<Cell> {
 
     private final LongAdder upstreamDemand;
 
-    FrameAtATimeSubscriber() {
+    GenerationAtATimeSubscriber() {
       this.upstreamDemand = new LongAdder();
     }
 
     @Override
     protected void hookOnSubscribe(final Subscription subscription) {
-      requestOneFrame();
+      requestOneGeneration();
     }
 
     @Override
@@ -237,59 +251,59 @@ public class GameStateWithBackpressure implements GameState {
     }
 
     private void doRequest(final Cell cell) {
-
       upstreamDemand.decrement();
       System.out.println("doRequest() decremented upstreamDemand now: " + upstreamDemand);
 
-      if (upstreamDemand.longValue() == 0) {
+      if (upstreamDemand.longValue() == 0)
+        completeGeneration(cell);
+    }
 
-        // We've received a complete frame and need to request the next one...
+    private void completeGeneration(final Cell cell) {
+      // We've received a complete generation and need to request the next one...
 
-        final int nextGeneration = cell.coordinates.generation + 1;
+      final int nextGeneration = cell.coordinates.generation + 1;
 
-        final Option<ReplayProcessor<Cell>> processorsForGeneration =
-            changes.peek(nextGeneration);
+      final Option<ReplayProcessor<Cell>> processorsForGeneration =
+          changes.peek(nextGeneration);
 
-        System.out.println("doRequest() upstreamDemand is 0, processor for generation " +
-            nextGeneration + " is " + processorsForGeneration);
+      System.out.println("completeGeneration() upstreamDemand is 0, processor for generation " +
+          nextGeneration + " is " + processorsForGeneration);
 
-        processorsForGeneration.onEmpty(() -> {
-          System.out.println("doRequest() NEED ADVANCE");
-          /*
-           There is no room in our ring buffer so we must advance. Look at the oldest
-           ReplayProcessor. If it has no subscribers then we can free up its location
-           in the ring buffer and offer a new ReplayProcessor.
-           */
-          final Tuple2<Integer, Option<ReplayProcessor<Cell>>> t2 = changes.peek();
-          final Integer oldestGeneration = t2._1;
-          final Option<ReplayProcessor<Cell>> oldestProcessors = t2._2;
+      processorsForGeneration
+          .peek(processor -> requestOneGeneration())
+          .onEmpty(() -> advanceWindowEventually(cell));
+    }
 
-          assert isGenerationComplete(oldestGeneration,cell);
+    private void advanceWindowEventually(final Cell cell) {
+      System.out.println("advanceWindowEventually() NEED ADVANCE");
+      /*
+       There is no room in our ring buffer so we must advance. Look at the oldest
+       ReplayProcessor. If it has no subscribers then we can free up its location
+       in the ring buffer and offer a new ReplayProcessor.
+       */
+      final Tuple2<Integer, Option<ReplayProcessor<Cell>>> t2 = changes.peek();
+      final Integer oldestGeneration = t2._1;
+      final Option<ReplayProcessor<Cell>> oldestProcessors = t2._2;
 
-          oldestProcessors
-              .peek(oldestProcessor -> {
-                if (oldestProcessor.hasDownstreams()) {
-                  System.out.println("doRequest(): waiting for subscribers to finish");
-                  /*
-                   Since there are still subscribers to this replayProcessor we can't free it up
-                   yet. Start a background process to try later. Recurse!
-                   TODO: this retry should be replaced with an event-driven hook. How can we hook
-                         into the subscribers on the replay processors to free it up when the last
-                         subscriber's flux finishes?
-                   */
-                  Mono.delay(Duration.ofSeconds(1)).doOnNext(_elapsed -> doRequest(cell));
-                } else {
-                  advanceWindow(oldestGeneration);
-                }
-              });
-        });
+      assert isGenerationComplete(oldestGeneration,cell);
 
-        requestOneFrame();
-
-        System.out.println(
-            String.format("doRequest(): requested a frame, upstreamDemand now: %s, cells cached: %d",
-                upstreamDemand, cellsCache.size()));
-      }
+      oldestProcessors
+          .peek(oldestProcessor -> {
+            if (oldestProcessor.hasDownstreams()) {
+              System.out.println("doRequest(): waiting for subscribers to finish");
+              /*
+               Since there are still subscribers to this replayProcessor we can't free it up
+               yet. Start a background process to try later. Recurse!
+               TODO: this retry should be replaced with an event-driven hook. How can we hook
+                     into the subscribers on the replay processors to free it up when the last
+                     subscriber's flux finishes?
+               */
+              Mono.delay(Duration.ofSeconds(1)).doOnNext(_elapsed -> advanceWindowEventually(cell));
+            } else {
+              advanceWindow(oldestGeneration);
+              requestOneGeneration();
+            }
+          });
     }
 
     private void advanceWindow(final int oldestGeneration) {
@@ -320,10 +334,13 @@ public class GameStateWithBackpressure implements GameState {
       System.out.println("advanceWindow() ring buffer is now " + changes);
     }
 
-    private void requestOneFrame() {
+    private void requestOneGeneration() {
       assert upstreamDemand.longValue() == 0;
       upstreamDemand.add(coordinateSystem.size());
       request(upstreamDemand.intValue());
+      System.out.println(
+          String.format("requestOneGeneration(): requested a generation, upstreamDemand now: %s, cells cached: %d",
+              upstreamDemand, cellsCache.size()));
     }
 
   }

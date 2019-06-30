@@ -6,8 +6,9 @@ Just getting started here. See the tests.
 
 ## TODO
 
+* fix `GameOfLifeEvolutionTest` and `GameOfLifeFramingTest` don't terminate when run w/ full suite
+* fix `GameOfLifeEvolutionTest` is flaky: fails about 1/3 of the time
 * fix `GameOfLifeFramingTest`: `GamStateWithBackpressure.put()` needs to advance window
-* delete `GameStateColdChanges`&mdash;it's superseded by `GameStateWithBackpressure`
 * make `GameStateColdChanges.changes()` produce a cold flux so no buffering is needed
 * make a visualization: maybe an RSocket client for JavaScript or something
 * enable BlockHound https://github.com/reactor/BlockHound

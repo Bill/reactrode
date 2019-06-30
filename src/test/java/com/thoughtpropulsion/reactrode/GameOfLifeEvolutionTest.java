@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.stream.Collectors;
@@ -17,7 +16,7 @@ import reactor.test.StepVerifier;
 
 class GameOfLifeEvolutionTest {
 
-  private static int PRIMORDIAL_GENERATION = -1;
+  private static final int PRIMORDIAL_GENERATION = -1;
   private static final int GENERATIONS_CACHED = 3;
   private GameOfLifeSystem gameOfLifeSystem;
 
@@ -25,7 +24,7 @@ class GameOfLifeEvolutionTest {
   static void beforeAll() { Hooks.onOperatorDebug();}
 
   @Test
-  void blockPatternTest() throws InterruptedException {
+  void blockPatternTest() {
 
     /*
       "block" is a 2x2 static form: it won't change generation-to-generation
@@ -45,14 +44,12 @@ class GameOfLifeEvolutionTest {
     paintPattern(cellsFromBits(4, 5,
         pattern, PRIMORDIAL_GENERATION));
 
-    final LongAdder validationOffset = new LongAdder();
-
     validatePattern(cellsFromBits(4, 5,
         pattern, PRIMORDIAL_GENERATION + 1), 0);
   }
 
   @Test
-  void blinkerPatternTest() throws InterruptedException {
+  void blinkerPatternTest() {
 
     /*
      "blinker" is a form that oscillates with period 2.
@@ -75,8 +72,6 @@ class GameOfLifeEvolutionTest {
     assertThat(b.size()).as("generation sizes are equal").isEqualTo(a.size());
 
     paintPattern(cellsFromBits(5, 5, a, PRIMORDIAL_GENERATION));
-
-    final LongAdder validationOffset1 = new LongAdder();
 
     validatePattern(cellsFromBits(5, 5,
         b, PRIMORDIAL_GENERATION + 1), 0);
@@ -109,7 +104,7 @@ class GameOfLifeEvolutionTest {
     gameOfLifeSystem.getGameState().putAll(Flux.fromIterable(pattern));
   }
 
-  private void validatePattern(final Collection<Cell> pattern, final int generationNumber) {
+  private void validatePattern(final Iterable<Cell> pattern, final int generationNumber) {
 
     final Flux<Cell> generation = gameOfLifeSystem.getGameState().changes(generationNumber);
 
