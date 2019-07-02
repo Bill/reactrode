@@ -45,10 +45,10 @@ public class ConnectableFluxTest {
 
     final Random random = new Random(1);
 
-    generateRequestsUntilComplete("Fast!", fastSubscription,100, random,
+    generateRequestsUntilComplete("Fast!", fastSubscription,10, random,
         fastNeedMore, fastDone);
 
-    generateRequestsUntilComplete("slow ", slowSubscription,500, random,
+    generateRequestsUntilComplete("slow ", slowSubscription,100, random,
         slowNeedMore, slowDone);
 
     waitUntilAll(fastDone,slowDone);
@@ -66,9 +66,7 @@ public class ConnectableFluxTest {
       final AtomicBoolean done,
       final AtomicBoolean needMore) {
 
-    final AtomicReference<Subscription> subscriptionRefs = new AtomicReference<>();
-
-    return returning(subscriptionRefs, subscriptionRef ->
+    return returning(new AtomicReference<>(), subscriptionRef ->
 
         topic.subscribe(
 
