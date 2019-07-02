@@ -49,11 +49,13 @@ public class ConnectableFluxTest {
 
     final Random random = new Random(1);
 
-    startConsumerProcess("Fast!", fastSubscription,10, random,
-        fastNeedMore, fastDone, scheduler);
+    scheduler.schedule(() ->
+      startConsumerProcess("Fast!", fastSubscription,10, random,
+          fastNeedMore, fastDone, scheduler));
 
-    startConsumerProcess("slow ", slowSubscription,100, random,
-        slowNeedMore, slowDone, scheduler);
+    scheduler.schedule(() ->
+        startConsumerProcess("slow ", slowSubscription,100, random,
+          slowNeedMore, slowDone, scheduler));
 
     waitUntilAll(fastDone,slowDone);
 
@@ -76,20 +78,24 @@ public class ConnectableFluxTest {
             .subscribeOn(scheduler)
             .subscribe(
 
-            item -> {
-              log(name, "got item: " + item);
-              needMore.set(true);},
+                item -> {
+                  log(name, "got item: " + item);
+                  needMore.set(true);
+                },
 
-            error -> {
-              log(name,"got error: " + error);
-              done.set(true);},
+                error -> {
+                  log(name, "got error: " + error);
+                  done.set(true);
+                },
 
-            () -> {
-              log(name, "complete.");
-              done.set(true);},
+                () -> {
+                  log(name, "complete.");
+                  done.set(true);
+                },
 
-            subscription -> {
-              subscriptionRef.set(subscription);}));
+                subscription -> {
+                  subscriptionRef.set(subscription);
+                }));
   }
 
   /*
@@ -116,10 +122,9 @@ public class ConnectableFluxTest {
 
     log(name, "delaying " + delay);
     Mono
-        .delay(Duration.ofMillis(delay))
+        .delay(Duration.ofMillis(delay),scheduler)
         .doOnNext(_actualDuration -> startConsumerProcess(
             name, subscription,frequency,random, needMore, complete, scheduler))
-        .subscribeOn(scheduler)
         .subscribe();
   }
 
@@ -146,7 +151,8 @@ public class ConnectableFluxTest {
   }
 
   private static void log(final String name, final String s) {
-    System.out.println(name + " " + s);
+    System.out.println(
+        String.format("%s %s (thread: %s)", name, s, Thread.currentThread().getId()));
   }
 
 }
