@@ -45,10 +45,10 @@ public class ConnectableFluxTest {
 
     final Random random = new Random(1);
 
-    generateRequestsUntilComplete("Fast!", fastSubscription,10, random,
+    startConsumerProcess("Fast!", fastSubscription,10, random,
         fastNeedMore, fastDone);
 
-    generateRequestsUntilComplete("slow ", slowSubscription,100, random,
+    startConsumerProcess("slow ", slowSubscription,100, random,
         slowNeedMore, slowDone);
 
     waitUntilAll(fastDone,slowDone);
@@ -89,7 +89,7 @@ public class ConnectableFluxTest {
   /*
    This sets up a task that issues upstream demand as needed, sleeping periodically.
    */
-  static void generateRequestsUntilComplete(
+  static void startConsumerProcess(
       final String name,
       final AtomicReference<Subscription> subscription,
       final long frequency,
@@ -97,7 +97,10 @@ public class ConnectableFluxTest {
       final AtomicBoolean needMore,
       final AtomicBoolean complete) {
 
-    if (needMore.get() && !complete.get()) {
+    if (complete.get())
+      return;
+
+    if (needMore.get()) {
       needMore.set(false);
       System.out.println(name + " requesting 1");
       subscription.get().request(1);
@@ -108,7 +111,7 @@ public class ConnectableFluxTest {
     System.out.println(name + " delaying " + delay);
     Mono
         .delay(Duration.ofMillis(delay))
-        .doOnNext(_actualDuration -> generateRequestsUntilComplete(
+        .doOnNext(_actualDuration -> startConsumerProcess(
             name, subscription,frequency,random, needMore, complete))
         .subscribe();
   }
