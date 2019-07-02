@@ -14,12 +14,16 @@ import org.junit.jupiter.api.Test;
 import org.reactivestreams.Subscription;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
 
 public class ConnectableFluxTest {
 
   @Disabled
   @Test
   void foo() {
+
+    final Scheduler scheduler = Schedulers.single();
 
     final Flux<Integer> head = Flux.just(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
 
@@ -36,20 +40,20 @@ public class ConnectableFluxTest {
     final AtomicBoolean fastDone = new AtomicBoolean();
     final AtomicBoolean fastNeedMore = new AtomicBoolean(true);
     final AtomicReference<Subscription> fastSubscription =
-        subscribe("Fast!", topic, fastDone, fastNeedMore);
+        subscribe("Fast!", topic, fastDone, fastNeedMore, scheduler);
 
     final AtomicBoolean slowDone = new AtomicBoolean();
     final AtomicBoolean slowNeedMore = new AtomicBoolean(true);
     final AtomicReference<Subscription> slowSubscription =
-        subscribe("slow ", topic, slowDone, slowNeedMore);
+        subscribe("slow ", topic, slowDone, slowNeedMore, scheduler);
 
     final Random random = new Random(1);
 
     startConsumerProcess("Fast!", fastSubscription,10, random,
-        fastNeedMore, fastDone);
+        fastNeedMore, fastDone, scheduler);
 
     startConsumerProcess("slow ", slowSubscription,100, random,
-        slowNeedMore, slowDone);
+        slowNeedMore, slowDone, scheduler);
 
     waitUntilAll(fastDone,slowDone);
 
@@ -64,22 +68,24 @@ public class ConnectableFluxTest {
       final String name,
       final Flux<Integer> topic,
       final AtomicBoolean done,
-      final AtomicBoolean needMore) {
+      final AtomicBoolean needMore, final Scheduler scheduler) {
 
     return returning(new AtomicReference<>(), subscriptionRef ->
 
-        topic.subscribe(
+        topic
+            .subscribeOn(scheduler)
+            .subscribe(
 
             item -> {
-              System.out.println(name + " got item: " + item);
+              log(name, "got item: " + item);
               needMore.set(true);},
 
             error -> {
-              System.out.println(name + " got error: " + error);
+              log(name,"got error: " + error);
               done.set(true);},
 
             () -> {
-              System.out.println(name + " complete.");
+              log(name, "complete.");
               done.set(true);},
 
             subscription -> {
@@ -95,31 +101,32 @@ public class ConnectableFluxTest {
       final long frequency,
       final Random random,
       final AtomicBoolean needMore,
-      final AtomicBoolean complete) {
+      final AtomicBoolean complete, final Scheduler scheduler) {
 
     if (complete.get())
       return;
 
     if (needMore.get()) {
       needMore.set(false);
-      System.out.println(name + " requesting 1");
+      log(name, "requesting 1");
       subscription.get().request(1);
     }
 
     final long delay = gaussianLong(frequency, random);
 
-    System.out.println(name + " delaying " + delay);
+    log(name, "delaying " + delay);
     Mono
         .delay(Duration.ofMillis(delay))
         .doOnNext(_actualDuration -> startConsumerProcess(
-            name, subscription,frequency,random, needMore, complete))
+            name, subscription,frequency,random, needMore, complete, scheduler))
+        .subscribeOn(scheduler)
         .subscribe();
   }
 
   static void waitUntilAll(final AtomicBoolean ... terms) {
     while (!and(terms)) {
+      log("test", "sleeping...");
       try {
-        System.out.println("sleeping...");
         Thread.sleep(500L);
       } catch (InterruptedException e) {
         // no problemo
@@ -136,6 +143,10 @@ public class ConnectableFluxTest {
 
   private static long gaussianLong(final long range, final Random random) {
     return (long) (random.nextGaussian() * range + range);
+  }
+
+  private static void log(final String name, final String s) {
+    System.out.println(name + " " + s);
   }
 
 }
