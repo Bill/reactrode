@@ -4,9 +4,13 @@ import static com.thoughtpropulsion.reactrode.Functional.returning;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import io.vavr.Tuple2;
 import org.junit.jupiter.api.Disabled;
@@ -26,6 +30,7 @@ public class ConnectableFluxTest {
     final AtomicBoolean needMore;
     final Scheduler scheduler;
     final AtomicReference<Subscription> subscription;
+    final List<Integer> seen;
 
     SplitterSubscriber(
         final String name,
@@ -36,6 +41,7 @@ public class ConnectableFluxTest {
       this.needMore = new AtomicBoolean(true);
       this.scheduler = scheduler;
       this.subscription = subscribe(name, topic, done, needMore);
+      this.seen = new ArrayList<>();
     }
 
     private AtomicReference<Subscription> subscribe(
@@ -53,6 +59,7 @@ public class ConnectableFluxTest {
                   item -> {
                     log(name, "got item: " + item);
                     needMore.set(true);
+                    seen.add(item);
                   },
 
                   error -> {
@@ -89,6 +96,7 @@ public class ConnectableFluxTest {
       final long delay = gaussianLong(frequency, random);
 
       log(name, "delaying " + delay);
+
       Mono
           .delay(Duration.ofMillis(delay),scheduler)
           .doOnNext(_actualDuration -> start(frequency,random))
@@ -99,28 +107,6 @@ public class ConnectableFluxTest {
       return (long) (random.nextGaussian() * range + range);
     }
 
-  }
-
-  @Test
-  void split2WithVirtualTimeShort() {
-
-    final VirtualTimeScheduler scheduler = VirtualTimeScheduler.getOrSet();
-    doSplittingStuff(scheduler, 100, 1000);
-
-    scheduler.advanceTimeBy(Duration.ofSeconds(60));
-
-    assertThat(true).isTrue();
-  }
-
-  @Test
-  void split2WithVirtualTimeLong() {
-
-    final VirtualTimeScheduler scheduler = VirtualTimeScheduler.getOrSet();
-    doSplittingStuff(scheduler, 100000, 1000000);
-
-    scheduler.advanceTimeBy(Duration.ofSeconds(60000));
-
-    assertThat(true).isTrue();
   }
 
   @Disabled
@@ -136,7 +122,40 @@ public class ConnectableFluxTest {
       Thread.sleep(10L);
     }
 
-    assertThat(true).isTrue();
+//    assertThat(t2._1.seen.stream()).isEqualTo(testSequence());
+//    assertThat(t2._2.seen.stream()).isEqualTo(testSequence());
+    assertThat(t2._1.seen).isEqualTo(testSequence().collect(Collectors.toList()));
+    assertThat(t2._2.seen).isEqualTo(testSequence().collect(Collectors.toList()));
+  }
+
+  @Test
+  void split2WithVirtualTimeShort() {
+
+    final VirtualTimeScheduler scheduler = VirtualTimeScheduler.getOrSet();
+    final Tuple2<SplitterSubscriber, SplitterSubscriber>
+        t2 = doSplittingStuff(scheduler, 100, 1000);
+
+    scheduler.advanceTimeBy(Duration.ofSeconds(60));
+
+//    assertThat(t2._1.seen.stream()).isEqualTo(testSequence());
+//    assertThat(t2._2.seen.stream()).isEqualTo(testSequence());
+    assertThat(t2._1.seen).isEqualTo(testSequence().collect(Collectors.toList()));
+    assertThat(t2._2.seen).isEqualTo(testSequence().collect(Collectors.toList()));
+  }
+
+  @Test
+  void split2WithVirtualTimeLong() {
+
+    final VirtualTimeScheduler scheduler = VirtualTimeScheduler.getOrSet();
+    final Tuple2<SplitterSubscriber, SplitterSubscriber>
+        t2 = doSplittingStuff(scheduler, 100000, 1000000);
+
+    scheduler.advanceTimeBy(Duration.ofSeconds(60000));
+
+//    assertThat(t2._1.seen.stream()).isEqualTo(testSequence());
+//    assertThat(t2._2.seen.stream()).isEqualTo(testSequence());
+    assertThat(t2._1.seen).isEqualTo(testSequence().collect(Collectors.toList()));
+    assertThat(t2._2.seen).isEqualTo(testSequence().collect(Collectors.toList()));
   }
 
   private Tuple2<SplitterSubscriber,SplitterSubscriber> doSplittingStuff(
@@ -152,7 +171,7 @@ public class ConnectableFluxTest {
 
      */
     final Flux<Integer> topic =
-        Flux.just(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+        Flux.fromStream(testSequence())
             .publish(2)
             .autoConnect(2);
 
@@ -171,6 +190,10 @@ public class ConnectableFluxTest {
         () -> slow.start(slowFrequency, random));
 
     return new Tuple2<>(fast,slow);
+  }
+
+  private Stream<Integer> testSequence() {
+    return Stream.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
   }
 
   private static void log(final String name, final String s) {
