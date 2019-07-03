@@ -5,6 +5,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
 import java.util.Random;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
@@ -16,14 +20,15 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
+import reactor.test.scheduler.VirtualTimeScheduler;
 
 public class ConnectableFluxTest {
 
   @Disabled
   @Test
-  void foo() {
+  void split2() {
 
-    final Scheduler scheduler = Schedulers.single();
+    final VirtualTimeScheduler scheduler = VirtualTimeScheduler.getOrSet();
 
     final Flux<Integer> head = Flux.just(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
 
@@ -50,14 +55,14 @@ public class ConnectableFluxTest {
     final Random random = new Random(1);
 
     scheduler.schedule(() ->
-      startConsumerProcess("Fast!", fastSubscription,10, random,
+      startConsumerProcess("Fast!", fastSubscription,10000, random,
           fastNeedMore, fastDone, scheduler));
 
     scheduler.schedule(() ->
-        startConsumerProcess("slow ", slowSubscription,100, random,
+        startConsumerProcess("slow ", slowSubscription,100000, random,
           slowNeedMore, slowDone, scheduler));
 
-    waitUntilAll(fastDone,slowDone);
+    scheduler.advanceTimeBy(Duration.ofSeconds(60000));
 
     assertThat(true).isTrue();
   }
@@ -126,24 +131,6 @@ public class ConnectableFluxTest {
         .doOnNext(_actualDuration -> startConsumerProcess(
             name, subscription,frequency,random, needMore, complete, scheduler))
         .subscribe();
-  }
-
-  static void waitUntilAll(final AtomicBoolean ... terms) {
-    while (!and(terms)) {
-      log("test", "sleeping...");
-      try {
-        Thread.sleep(500L);
-      } catch (InterruptedException e) {
-        // no problemo
-      }
-    }
-  }
-
-  static boolean and(final AtomicBoolean ... terms) {
-    return Stream
-        .of(terms)
-        .map(AtomicBoolean::get)
-        .reduce(true, Boolean::logicalAnd);
   }
 
   private static long gaussianLong(final long range, final Random random) {
