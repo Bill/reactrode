@@ -5,14 +5,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
 import java.util.Random;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Stream;
 
+import io.vavr.Tuple2;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.reactivestreams.Subscription;
@@ -24,14 +20,129 @@ import reactor.test.scheduler.VirtualTimeScheduler;
 
 public class ConnectableFluxTest {
 
-  @Disabled
+  static class SplitterSubscriber {
+    final String name;
+    final AtomicBoolean done;
+    final AtomicBoolean needMore;
+    final Scheduler scheduler;
+    final AtomicReference<Subscription> subscription;
+
+    SplitterSubscriber(
+        final String name,
+        final Flux<Integer> topic,
+        final Scheduler scheduler) {
+      this.name = name;
+      this.done = new AtomicBoolean();
+      this.needMore = new AtomicBoolean(true);
+      this.scheduler = scheduler;
+      this.subscription = subscribe(name, topic, done, needMore);
+    }
+
+    private AtomicReference<Subscription> subscribe(
+        final String name,
+        final Flux<Integer> topic,
+        final AtomicBoolean done,
+        final AtomicBoolean needMore) {
+
+      return returning(new AtomicReference<>(), subscriptionRef ->
+
+          topic
+              .subscribeOn(scheduler)
+              .subscribe(
+
+                  item -> {
+                    log(name, "got item: " + item);
+                    needMore.set(true);
+                  },
+
+                  error -> {
+                    log(name, "got error: " + error);
+                    done.set(true);
+                  },
+
+                  () -> {
+                    log(name, "complete.");
+                    done.set(true);
+                  },
+
+                  subscription -> {
+                    subscriptionRef.set(subscription);
+                  }));
+    }
+
+    /*
+     This sets up a task that issues upstream demand as needed, sleeping periodically.
+     */
+    void start(
+        final long frequency,
+        final Random random) {
+
+      if (done.get())
+        return;
+
+      if (needMore.get()) {
+        needMore.set(false);
+        log(name, "requesting 1");
+        subscription.get().request(1);
+      }
+
+      final long delay = gaussianLong(frequency, random);
+
+      log(name, "delaying " + delay);
+      Mono
+          .delay(Duration.ofMillis(delay),scheduler)
+          .doOnNext(_actualDuration -> start(frequency,random))
+          .subscribe();
+    }
+
+    private static long gaussianLong(final long range, final Random random) {
+      return (long) (random.nextGaussian() * range + range);
+    }
+
+  }
+
   @Test
-  void split2() {
+  void split2WithVirtualTimeShort() {
 
     final VirtualTimeScheduler scheduler = VirtualTimeScheduler.getOrSet();
+    doSplittingStuff(scheduler, 100, 1000);
 
-    final Flux<Integer> head = Flux.just(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+    scheduler.advanceTimeBy(Duration.ofSeconds(60));
 
+    assertThat(true).isTrue();
+  }
+
+  @Test
+  void split2WithVirtualTimeLong() {
+
+    final VirtualTimeScheduler scheduler = VirtualTimeScheduler.getOrSet();
+    doSplittingStuff(scheduler, 100000, 1000000);
+
+    scheduler.advanceTimeBy(Duration.ofSeconds(60000));
+
+    assertThat(true).isTrue();
+  }
+
+  @Disabled
+  @Test
+  void split2WithRealTime() throws InterruptedException {
+
+    final Scheduler scheduler = Schedulers.single();
+
+    final Tuple2<SplitterSubscriber, SplitterSubscriber>
+        t2 = doSplittingStuff(scheduler, 100, 1000);
+
+    while (!t2._1.done.get() || !t2._2.done.get()) {
+      Thread.sleep(10L);
+    }
+
+    assertThat(true).isTrue();
+  }
+
+  private Tuple2<SplitterSubscriber,SplitterSubscriber> doSplittingStuff(
+      final Scheduler scheduler,
+      final int fastFrequency,
+      final int slowFrequency) {
     /*
 
      !! LOOKIE HERE !! this is the important thing
@@ -40,101 +151,26 @@ public class ConnectableFluxTest {
      after the second subscription arrives
 
      */
-    final Flux<Integer> topic = head.publish(2).autoConnect(2);
+    final Flux<Integer> topic =
+        Flux.just(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+            .publish(2)
+            .autoConnect(2);
 
-    final AtomicBoolean fastDone = new AtomicBoolean();
-    final AtomicBoolean fastNeedMore = new AtomicBoolean(true);
-    final AtomicReference<Subscription> fastSubscription =
-        subscribe("Fast!", topic, fastDone, fastNeedMore, scheduler);
+    final SplitterSubscriber fast =
+        new SplitterSubscriber("Fast!", topic, scheduler);
 
-    final AtomicBoolean slowDone = new AtomicBoolean();
-    final AtomicBoolean slowNeedMore = new AtomicBoolean(true);
-    final AtomicReference<Subscription> slowSubscription =
-        subscribe("slow ", topic, slowDone, slowNeedMore, scheduler);
+    final SplitterSubscriber slow =
+        new SplitterSubscriber("slow ", topic, scheduler);
 
     final Random random = new Random(1);
 
-    scheduler.schedule(() ->
-      startConsumerProcess("Fast!", fastSubscription,10000, random,
-          fastNeedMore, fastDone, scheduler));
+    scheduler.schedule(
+        () -> fast.start(fastFrequency, random));
 
-    scheduler.schedule(() ->
-        startConsumerProcess("slow ", slowSubscription,100000, random,
-          slowNeedMore, slowDone, scheduler));
+    scheduler.schedule(
+        () -> slow.start(slowFrequency, random));
 
-    scheduler.advanceTimeBy(Duration.ofSeconds(60000));
-
-    assertThat(true).isTrue();
-  }
-
-  /*
-   Return ref to Subscription to (ConnectableFlux). This method takes a Flux but that Flux
-   was returned from ConnectableFlux.autoConnect()
-   */
-  private AtomicReference<Subscription> subscribe(
-      final String name,
-      final Flux<Integer> topic,
-      final AtomicBoolean done,
-      final AtomicBoolean needMore, final Scheduler scheduler) {
-
-    return returning(new AtomicReference<>(), subscriptionRef ->
-
-        topic
-            .subscribeOn(scheduler)
-            .subscribe(
-
-                item -> {
-                  log(name, "got item: " + item);
-                  needMore.set(true);
-                },
-
-                error -> {
-                  log(name, "got error: " + error);
-                  done.set(true);
-                },
-
-                () -> {
-                  log(name, "complete.");
-                  done.set(true);
-                },
-
-                subscription -> {
-                  subscriptionRef.set(subscription);
-                }));
-  }
-
-  /*
-   This sets up a task that issues upstream demand as needed, sleeping periodically.
-   */
-  static void startConsumerProcess(
-      final String name,
-      final AtomicReference<Subscription> subscription,
-      final long frequency,
-      final Random random,
-      final AtomicBoolean needMore,
-      final AtomicBoolean complete, final Scheduler scheduler) {
-
-    if (complete.get())
-      return;
-
-    if (needMore.get()) {
-      needMore.set(false);
-      log(name, "requesting 1");
-      subscription.get().request(1);
-    }
-
-    final long delay = gaussianLong(frequency, random);
-
-    log(name, "delaying " + delay);
-    Mono
-        .delay(Duration.ofMillis(delay),scheduler)
-        .doOnNext(_actualDuration -> startConsumerProcess(
-            name, subscription,frequency,random, needMore, complete, scheduler))
-        .subscribe();
-  }
-
-  private static long gaussianLong(final long range, final Random random) {
-    return (long) (random.nextGaussian() * range + range);
+    return new Tuple2<>(fast,slow);
   }
 
   private static void log(final String name, final String s) {
