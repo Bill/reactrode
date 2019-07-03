@@ -111,51 +111,70 @@ public class ConnectableFluxTest {
 
   @Disabled
   @Test
-  void split2WithRealTime() throws InterruptedException {
+  void split2WithRealTimeMultiThreaded() throws InterruptedException {
+
+    final Scheduler scheduler = Schedulers.parallel();
+
+    final Tuple2<SplitterSubscriber, SplitterSubscriber>
+        subscribers = doSplittingStuff(scheduler, 100, 1000);
+
+    while (!subscribers._1.done.get() || !subscribers._2.done.get()) {
+      Thread.sleep(10);
+    }
+
+    validate(subscribers);
+  }
+
+  @Disabled
+  @Test
+  void split2WithRealTimeSingleThreaded() throws InterruptedException {
 
     final Scheduler scheduler = Schedulers.single();
 
     final Tuple2<SplitterSubscriber, SplitterSubscriber>
-        t2 = doSplittingStuff(scheduler, 100, 1000);
+        subscribers = doSplittingStuff(scheduler, 100, 1000);
 
-    while (!t2._1.done.get() || !t2._2.done.get()) {
-      Thread.sleep(10L);
+    while (!subscribers._1.done.get() || !subscribers._2.done.get()) {
+      Thread.sleep(10);
     }
 
-//    assertThat(t2._1.seen.stream()).isEqualTo(testSequence());
-//    assertThat(t2._2.seen.stream()).isEqualTo(testSequence());
-    assertThat(t2._1.seen).isEqualTo(testSequence().collect(Collectors.toList()));
-    assertThat(t2._2.seen).isEqualTo(testSequence().collect(Collectors.toList()));
+    validate(subscribers);
   }
 
   @Test
-  void split2WithVirtualTimeShort() {
+  void split2In10VirtualSeconds() {
 
     final VirtualTimeScheduler scheduler = VirtualTimeScheduler.getOrSet();
     final Tuple2<SplitterSubscriber, SplitterSubscriber>
-        t2 = doSplittingStuff(scheduler, 100, 1000);
+        subscribers = doSplittingStuff(scheduler, 100, 1000);
 
-    scheduler.advanceTimeBy(Duration.ofSeconds(60));
+    scheduler.advanceTimeBy(Duration.ofSeconds(10));
 
-//    assertThat(t2._1.seen.stream()).isEqualTo(testSequence());
-//    assertThat(t2._2.seen.stream()).isEqualTo(testSequence());
-    assertThat(t2._1.seen).isEqualTo(testSequence().collect(Collectors.toList()));
-    assertThat(t2._2.seen).isEqualTo(testSequence().collect(Collectors.toList()));
+    validate(subscribers);
   }
 
   @Test
-  void split2WithVirtualTimeLong() {
+  void split2In3VirtualHours() {
 
     final VirtualTimeScheduler scheduler = VirtualTimeScheduler.getOrSet();
     final Tuple2<SplitterSubscriber, SplitterSubscriber>
-        t2 = doSplittingStuff(scheduler, 100000, 1000000);
+        subscribers = doSplittingStuff(scheduler, 100000, 1000000);
 
-    scheduler.advanceTimeBy(Duration.ofSeconds(60000));
+    scheduler.advanceTimeBy(Duration.ofHours(3));
 
-//    assertThat(t2._1.seen.stream()).isEqualTo(testSequence());
-//    assertThat(t2._2.seen.stream()).isEqualTo(testSequence());
-    assertThat(t2._1.seen).isEqualTo(testSequence().collect(Collectors.toList()));
-    assertThat(t2._2.seen).isEqualTo(testSequence().collect(Collectors.toList()));
+    validate(subscribers);
+  }
+
+  private void validate(
+      final Tuple2<SplitterSubscriber, SplitterSubscriber> subscribers) {
+
+    /*
+     Have to turn the stream into an iterable to compare it due to AssertJ bug:
+     https://github.com/joel-costigliola/assertj-core/issues/1545
+     */
+    final Iterable<Integer> asList = testSequence().collect(Collectors.toList());
+    assertThat(subscribers._1.seen).isEqualTo(asList);
+    assertThat(subscribers._2.seen).isEqualTo(asList);
   }
 
   private Tuple2<SplitterSubscriber,SplitterSubscriber> doSplittingStuff(
