@@ -1,6 +1,8 @@
 package com.thoughtpropulsion.reactrode.rxperiment;
 
 import static com.thoughtpropulsion.reactrode.Functional.returning;
+import static java.lang.System.currentTimeMillis;
+import static java.lang.System.nanoTime;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
@@ -18,6 +20,8 @@ import io.vavr.Tuple2;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.reactivestreams.Subscription;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Scheduler;
@@ -98,14 +102,6 @@ public class ConnectableFluxTest {
 
   }
 
-  private Random random;
-
-  @BeforeEach
-  void beforeEach() {
-    random = new Random(1);
-  }
-
-
   @Disabled
   @Test
   void split2WithRealTimeMultiThreaded() throws InterruptedException {
@@ -142,8 +138,26 @@ public class ConnectableFluxTest {
     validate(subscribers);
   }
 
-  @Test
-  void split2In10VirtualSeconds() {
+  private Random random;
+
+  private static boolean exploreStateSpace = false;
+
+  Random createRandom(final long trySeed) {
+    final long actualSeed;
+    if (exploreStateSpace)
+      actualSeed = nanoTime();
+    else
+      actualSeed = trySeed;
+    System.out.println(String.format("using seed %,d", actualSeed));
+    return new Random(actualSeed);
+  }
+
+
+  @ParameterizedTest
+  @ValueSource(longs = {134_218_433_257_093L})
+  void split2In9VirtualSeconds(final long seed) {
+
+    random = createRandom(seed);
 
     final VirtualTimeScheduler scheduler =
         VirtualTimeScheduler.set(
@@ -157,13 +171,16 @@ public class ConnectableFluxTest {
         1000,
         TimeUnit.MILLISECONDS);
 
-    scheduler.advanceTimeBy(Duration.ofSeconds(10));
+    scheduler.advanceTimeBy(Duration.ofSeconds(9));
 
     validate(subscribers);
   }
 
-  @Test
-  void split2In3VirtualHours() {
+  @ParameterizedTest
+  @ValueSource(longs = {134_502_548_616_073L})
+  void split2In135VirtualMinutes(final long seed) {
+
+    final Random random = createRandom(seed);
 
     final VirtualTimeScheduler scheduler =
         VirtualTimeScheduler
@@ -177,18 +194,16 @@ public class ConnectableFluxTest {
         15,
         TimeUnit.MINUTES);
 
-    scheduler.advanceTimeBy(Duration.ofHours(3));
+    scheduler.advanceTimeBy(Duration.ofMinutes(135));
 
     validate(subscribers);
   }
 
   @Test
   void split2In10VirtualSecondsIsDeterministic() {
-    random = new Random(1);
-    split2In10VirtualSeconds();
+    split2In9VirtualSeconds(1);
     final long afterFirstRun = random.nextLong();
-    random = new Random(1);
-    split2In10VirtualSeconds();
+    split2In9VirtualSeconds(1);
     assertThat(random.nextLong())
         .as("random sequences match run to run")
         .isEqualTo(afterFirstRun);
@@ -196,11 +211,9 @@ public class ConnectableFluxTest {
 
   @Test
   void split2In3VirtualHoursIsDeterministic() {
-    random = new Random(1);
-    split2In3VirtualHours();
+    split2In135VirtualMinutes(1);
     final long afterFirstRun = random.nextLong();
-    random = new Random(1);
-    split2In3VirtualHours();
+    split2In135VirtualMinutes(1);
     assertThat(random.nextLong())
         .as("random sequences match run to run")
         .isEqualTo(afterFirstRun);

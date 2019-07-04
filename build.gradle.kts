@@ -20,8 +20,9 @@ dependencies {
     implementation("io.projectreactor:reactor-core")
     implementation("io.vavr:vavr:0.9.2")
     testImplementation("org.junit.jupiter:junit-jupiter:5.4.2")
-    testCompile("org.assertj:assertj-core:3.11.1")
-    testCompile("io.projectreactor:reactor-test")
+    testImplementation("org.junit.jupiter:junit-jupiter-params:5.4.2")
+    testImplementation("org.assertj:assertj-core:3.11.1")
+    testImplementation("io.projectreactor:reactor-test")
 }
 
 configure<JavaPluginConvention> {
