@@ -5,6 +5,8 @@ import static java.lang.System.currentTimeMillis;
 import static java.lang.System.nanoTime;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -143,13 +145,24 @@ public class ConnectableFluxTest {
   private static boolean exploreStateSpace = false;
 
   Random createRandom(final long trySeed) {
+
     final long actualSeed;
+
     if (exploreStateSpace)
       actualSeed = nanoTime();
     else
       actualSeed = trySeed;
+
     System.out.println(String.format("using seed %,d", actualSeed));
-    return new Random(actualSeed);
+
+    try {
+      return returning(
+          SecureRandom.getInstance("SHA1PRNG"),
+          prng -> prng.setSeed(actualSeed));
+    } catch (NoSuchAlgorithmException e) {
+      throw new AssertionError(e);
+    }
+
   }
 
 
@@ -177,10 +190,10 @@ public class ConnectableFluxTest {
   }
 
   @ParameterizedTest
-  @ValueSource(longs = {134_502_548_616_073L})
+  @ValueSource(longs = {139_061_402_094_475L})
   void split2In135VirtualMinutes(final long seed) {
 
-    final Random random = createRandom(seed);
+    random = createRandom(seed);
 
     final VirtualTimeScheduler scheduler =
         VirtualTimeScheduler
