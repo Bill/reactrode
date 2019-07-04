@@ -167,7 +167,7 @@ public class ConnectableFluxTest {
 
 
   @ParameterizedTest
-  @ValueSource(longs = {134_218_433_257_093L})
+  @ValueSource(longs = {141_447_917_499_306L})
   void split2In9VirtualSeconds(final long seed) {
 
     random = createRandom(seed);
@@ -190,7 +190,7 @@ public class ConnectableFluxTest {
   }
 
   @ParameterizedTest
-  @ValueSource(longs = {139_061_402_094_475L})
+  @ValueSource(longs = {142_062_396_813_291L})
   void split2In135VirtualMinutes(final long seed) {
 
     random = createRandom(seed);

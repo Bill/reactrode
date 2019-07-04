@@ -1,5 +1,8 @@
 package com.thoughtpropulsion.reactrode;
 
+import static com.thoughtpropulsion.reactrode.Functional.returning;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
+
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -39,10 +42,10 @@ public class VirtualTimeSchedulerInaccurate extends VirtualTimeScheduler {
   @Override
   public Disposable schedule(
       final Runnable task,
-      final long delayArg,
-      final TimeUnit unit) {
+      final long delay,
+      final TimeUnit timeUnit) {
 
-    return super.schedule(task, skewDelay(delayArg, unit), TimeUnit.NANOSECONDS);
+    return super.schedule(task, gaussian(delay, timeUnit), NANOSECONDS);
   }
 
   @Override
@@ -72,7 +75,7 @@ public class VirtualTimeSchedulerInaccurate extends VirtualTimeScheduler {
      long nowNanoseconds = nanoTime
      By calling now() we're adding deferredNanoTime
      */
-    final long firstNowNanoseconds = now(TimeUnit.NANOSECONDS);
+    final long firstNowNanoseconds = now(NANOSECONDS);
 
     final long firstStartInNanoseconds = firstNowNanoseconds + unit.toNanos(initialDelay);
 
@@ -92,18 +95,32 @@ public class VirtualTimeSchedulerInaccurate extends VirtualTimeScheduler {
 
   }
 
-  private long skewDelay(final long delayArg, final TimeUnit unit) {
-    final long skewedDelay = gaussianLong(delayArg);
+  /**
+   Introduce error into {@param delay}.
 
-    System.out.println(String.format(
-        "scheduler delaying requested:actual %,d:%,d %s",
-        delayArg, skewedDelay, unit));
-
-    return skewedDelay;
+   @param delay is the magnitude of the delay time
+   @param unit specifies time unit
+   @return a modified time value in units of {@param unit}
+   */
+  private long gaussian(final long delay, final TimeUnit unit) {
+    return returning(
+        unit.convert(gaussianNanos(unit.toNanos(delay)), NANOSECONDS),
+        skewedDelay -> {
+//            System.out.println(String.format(
+//                "scheduler delaying requested:actual %,d:%,d %s",
+//                delayArg, skewedDelay, unit));
+        }
+    );
   }
 
-  private long gaussianLong(final long x) {
-    return (long) (random.nextGaussian() * standardDeviationNanos) + x;
+  /**
+   * Introduce error into {@param delayNanos}
+   *
+   * @param delayNanos is the nanosecond delay
+   * @return a modified time value in units of {@code NANOSECONDS}
+   */
+  private long gaussianNanos(final long delayNanos) {
+    return (long) (random.nextGaussian() * standardDeviationNanos) + delayNanos;
   }
 
   final class PeriodicTask extends AtomicReference<Disposable> implements Runnable,
@@ -140,7 +157,7 @@ public class VirtualTimeSchedulerInaccurate extends VirtualTimeScheduler {
          long nowNanoseconds = nanoTime
          By calling now() we're adding deferredNanoTime
          */
-        long nowNanoseconds = now(TimeUnit.NANOSECONDS);
+        long nowNanoseconds = now(NANOSECONDS);
 
         // If the clock moved in a direction quite a bit, rebase the repetition period
         if (nowNanoseconds + CLOCK_DRIFT_TOLERANCE_NANOSECONDS < lastNowNanoseconds || nowNanoseconds >= lastNowNanoseconds + periodInNanoseconds + CLOCK_DRIFT_TOLERANCE_NANOSECONDS) {
@@ -163,7 +180,7 @@ public class VirtualTimeSchedulerInaccurate extends VirtualTimeScheduler {
             is that we are able to call our own schedule() method here.
             Ours introduces inaccuracy
          */
-        replace(this, schedule(this, delay, TimeUnit.NANOSECONDS));
+        replace(this, schedule(this, delay, NANOSECONDS));
       }
     }
 
