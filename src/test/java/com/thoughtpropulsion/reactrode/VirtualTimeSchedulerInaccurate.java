@@ -96,7 +96,7 @@ public class VirtualTimeSchedulerInaccurate extends VirtualTimeScheduler {
     final long skewedDelay = gaussianLong(delayArg);
 
     System.out.println(String.format(
-        "scheduler delaying requested:actual %d:%d %s",
+        "scheduler delaying requested:actual %,d:%,d %s",
         delayArg, skewedDelay, unit));
 
     return skewedDelay;
