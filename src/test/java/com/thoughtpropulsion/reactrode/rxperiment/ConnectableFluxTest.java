@@ -7,17 +7,19 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.thoughtpropulsion.reactrode.VirtualTimeSchedulerInaccurate;
 import io.vavr.Tuple2;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.reactivestreams.Subscription;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 import reactor.test.scheduler.VirtualTimeScheduler;
@@ -50,64 +52,59 @@ public class ConnectableFluxTest {
         final AtomicBoolean done,
         final AtomicBoolean needMore) {
 
-      return returning(new AtomicReference<>(), subscriptionRef ->
+      return returning(
+          new AtomicReference<>(),
+          subscriptionRef ->
+              topic
+                  .subscribeOn(scheduler)
+                  .subscribe(
 
-          topic
-              .subscribeOn(scheduler)
-              .subscribe(
+                      item -> {
+                        log(name, "got item: " + item);
+                        needMore.set(true);
+                        seen.add(item);
+                      },
 
-                  item -> {
-                    log(name, "got item: " + item);
-                    needMore.set(true);
-                    seen.add(item);
-                  },
+                      error -> {
+                        log(name, "got error: " + error);
+                        done.set(true);
+                      },
 
-                  error -> {
-                    log(name, "got error: " + error);
-                    done.set(true);
-                  },
+                      () -> {
+                        log(name, "complete.");
+                        done.set(true);
+                      },
 
-                  () -> {
-                    log(name, "complete.");
-                    done.set(true);
-                  },
-
-                  subscription -> {
-                    subscriptionRef.set(subscription);
-                  }));
+                      subscription -> {
+                        subscriptionRef.set(subscription);
+                      }));
     }
 
     /*
-     This sets up a task that issues upstream demand as needed, sleeping periodically.
+     Generate upstream demand as needed.
+
+     Call this periodically
      */
-    void start(
-        final long frequency,
-        final Random random) {
+    void step() {
 
       if (done.get())
         return;
 
-      if (needMore.get()) {
-        needMore.set(false);
+      if (needMore.compareAndSet(true,false)) {
         log(name, "requesting 1");
         subscription.get().request(1);
       }
-
-      final long delay = gaussianLong(frequency, random);
-
-      log(name, "delaying " + delay);
-
-      Mono
-          .delay(Duration.ofMillis(delay),scheduler)
-          .doOnNext(_actualDuration -> start(frequency,random))
-          .subscribe();
-    }
-
-    private static long gaussianLong(final long range, final Random random) {
-      return (long) (random.nextGaussian() * range + range);
     }
 
   }
+
+  private Random random;
+
+  @BeforeEach
+  void beforeEach() {
+    random = new Random(1);
+  }
+
 
   @Disabled
   @Test
@@ -116,7 +113,11 @@ public class ConnectableFluxTest {
     final Scheduler scheduler = Schedulers.parallel();
 
     final Tuple2<SplitterSubscriber, SplitterSubscriber>
-        subscribers = doSplittingStuff(scheduler, 100, 1000);
+        subscribers = doSplittingStuff(
+            scheduler,
+        100,
+        1000,
+        TimeUnit.MILLISECONDS);
 
     while (!subscribers._1.done.get() || !subscribers._2.done.get()) {
       Thread.sleep(10);
@@ -132,7 +133,7 @@ public class ConnectableFluxTest {
     final Scheduler scheduler = Schedulers.single();
 
     final Tuple2<SplitterSubscriber, SplitterSubscriber>
-        subscribers = doSplittingStuff(scheduler, 100, 1000);
+        subscribers = doSplittingStuff(scheduler, 100, 1000, TimeUnit.MILLISECONDS);
 
     while (!subscribers._1.done.get() || !subscribers._2.done.get()) {
       Thread.sleep(10);
@@ -144,9 +145,17 @@ public class ConnectableFluxTest {
   @Test
   void split2In10VirtualSeconds() {
 
-    final VirtualTimeScheduler scheduler = VirtualTimeScheduler.getOrSet();
+    final VirtualTimeScheduler scheduler =
+        VirtualTimeScheduler.set(
+            VirtualTimeSchedulerInaccurate.create(
+                random, 20, TimeUnit.MILLISECONDS));
+
     final Tuple2<SplitterSubscriber, SplitterSubscriber>
-        subscribers = doSplittingStuff(scheduler, 100, 1000);
+        subscribers = doSplittingStuff(
+            scheduler,
+        100,
+        1000,
+        TimeUnit.MILLISECONDS);
 
     scheduler.advanceTimeBy(Duration.ofSeconds(10));
 
@@ -156,13 +165,45 @@ public class ConnectableFluxTest {
   @Test
   void split2In3VirtualHours() {
 
-    final VirtualTimeScheduler scheduler = VirtualTimeScheduler.getOrSet();
+    final VirtualTimeScheduler scheduler =
+        VirtualTimeScheduler
+            .set(VirtualTimeSchedulerInaccurate.create(
+                random, 1, TimeUnit.MINUTES));
+
     final Tuple2<SplitterSubscriber, SplitterSubscriber>
-        subscribers = doSplittingStuff(scheduler, 100000, 1000000);
+        subscribers = doSplittingStuff(
+            scheduler,
+        2,
+        15,
+        TimeUnit.MINUTES);
 
     scheduler.advanceTimeBy(Duration.ofHours(3));
 
     validate(subscribers);
+  }
+
+  @Test
+  void split2In10VirtualSecondsIsDeterministic() {
+    random = new Random(1);
+    split2In10VirtualSeconds();
+    final long afterFirstRun = random.nextLong();
+    random = new Random(1);
+    split2In10VirtualSeconds();
+    assertThat(random.nextLong())
+        .as("random sequences match run to run")
+        .isEqualTo(afterFirstRun);
+  }
+
+  @Test
+  void split2In3VirtualHoursIsDeterministic() {
+    random = new Random(1);
+    split2In3VirtualHours();
+    final long afterFirstRun = random.nextLong();
+    random = new Random(1);
+    split2In3VirtualHours();
+    assertThat(random.nextLong())
+        .as("random sequences match run to run")
+        .isEqualTo(afterFirstRun);
   }
 
   private void validate(
@@ -179,11 +220,12 @@ public class ConnectableFluxTest {
 
   private Tuple2<SplitterSubscriber,SplitterSubscriber> doSplittingStuff(
       final Scheduler scheduler,
-      final int fastFrequency,
-      final int slowFrequency) {
+      final long fastFrequency,
+      final long slowFrequency,
+      final TimeUnit timeUnit) {
     /*
 
-     !! LOOKIE HERE !! this is the important thing
+     !! LOOKIE HERE !! this is what we're testing
 
      publish(2) creates the ConnectableFlux that will start producing to all subscribers
      after the second subscription arrives
@@ -191,8 +233,8 @@ public class ConnectableFluxTest {
      */
     final Flux<Integer> topic =
         Flux.fromStream(testSequence())
-            .publish(2)
-            .autoConnect(2);
+            .publish(3)           // bounded demand
+            .autoConnect(2); // number of subscribers to wait for
 
     final SplitterSubscriber fast =
         new SplitterSubscriber("Fast!", topic, scheduler);
@@ -200,13 +242,11 @@ public class ConnectableFluxTest {
     final SplitterSubscriber slow =
         new SplitterSubscriber("slow ", topic, scheduler);
 
-    final Random random = new Random(1);
+    scheduler.schedulePeriodically(
+        () -> fast.step(), 0, fastFrequency, timeUnit);
 
-    scheduler.schedule(
-        () -> fast.start(fastFrequency, random));
-
-    scheduler.schedule(
-        () -> slow.start(slowFrequency, random));
+    scheduler.schedulePeriodically(
+        () -> slow.step(), 0, slowFrequency, timeUnit);
 
     return new Tuple2<>(fast,slow);
   }
@@ -217,7 +257,8 @@ public class ConnectableFluxTest {
 
   private static void log(final String name, final String s) {
     System.out.println(
-        String.format("%s %s (thread: %s)", name, s, Thread.currentThread().getId()));
+        String.format("%s %s (thread: %s)",
+            name, s, Thread.currentThread().getId()));
   }
 
 }

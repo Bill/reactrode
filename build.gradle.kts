@@ -12,7 +12,7 @@ repositories {
 
 dependencyManagement {
     imports {
-        mavenBom("io.projectreactor:reactor-bom:Californium-SR8")
+        mavenBom("io.projectreactor:reactor-bom:Californium-SR9")
     }
 }
 
