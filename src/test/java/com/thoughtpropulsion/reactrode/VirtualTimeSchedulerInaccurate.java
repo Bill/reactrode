@@ -55,18 +55,6 @@ public class VirtualTimeSchedulerInaccurate extends VirtualTimeScheduler {
       final long period,
       final TimeUnit unit) {
 
-    /*
-     We haven't done the work (yet) to make the periodic schedule inaccurate.
-     That scheduling is done via VirtualTimeScheduler.PeriodicTask which does
-     the calculation of the next run time after the initial run.
-     */
-//    throw new NotImplementedException();
-
-    /*
-     This implementation is provisional. It isn't as accurate (over time) as the
-     one in VirtualTimeScheduler.PeriodicTask. This one calculates the next time
-     to run based on the current time which means it accumulates error with every step.
-     */
     final long periodInNanoseconds = unit.toNanos(period);
 
     /*
