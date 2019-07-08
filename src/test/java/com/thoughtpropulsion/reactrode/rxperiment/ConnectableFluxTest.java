@@ -267,6 +267,7 @@ public class ConnectableFluxTest {
      */
     final Flux<Integer> topic =
         Flux.fromStream(testSequence())
+            .doOnNext(i -> System.out.println("broadcasting item " + i))
             .publish(3)           // bounded demand
             .autoConnect(2); // number of subscribers to wait for
 
