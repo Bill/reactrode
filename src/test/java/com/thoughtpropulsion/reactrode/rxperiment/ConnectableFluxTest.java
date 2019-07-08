@@ -3,6 +3,8 @@ package com.thoughtpropulsion.reactrode.rxperiment;
 import static com.thoughtpropulsion.reactrode.Functional.returning;
 import static java.lang.System.currentTimeMillis;
 import static java.lang.System.nanoTime;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.security.NoSuchAlgorithmException;
@@ -115,13 +117,15 @@ public class ConnectableFluxTest {
             scheduler,
         100,
         1000,
-        TimeUnit.MILLISECONDS);
+        MILLISECONDS);
+
+    Thread.sleep(9_000L);
+
+    validate(subscribers);
 
     while (!subscribers._1.done.get() || !subscribers._2.done.get()) {
       Thread.sleep(10);
     }
-
-    validate(subscribers);
   }
 
   @Disabled
@@ -131,13 +135,18 @@ public class ConnectableFluxTest {
     final Scheduler scheduler = Schedulers.single();
 
     final Tuple2<SplitterSubscriber, SplitterSubscriber>
-        subscribers = doSplittingStuff(scheduler, 100, 1000, TimeUnit.MILLISECONDS);
+        subscribers = doSplittingStuff(scheduler,
+        100,
+        1000,
+        MILLISECONDS);
+
+    Thread.sleep(9_000L);
+
+    validate(subscribers);
 
     while (!subscribers._1.done.get() || !subscribers._2.done.get()) {
       Thread.sleep(10);
     }
-
-    validate(subscribers);
   }
 
   private Random random;
@@ -153,7 +162,7 @@ public class ConnectableFluxTest {
     else
       actualSeed = trySeed;
 
-    System.out.println(String.format("using seed %,d", actualSeed));
+    System.out.println("using seed " + readableSeed(actualSeed));
 
     try {
       return returning(
@@ -165,7 +174,6 @@ public class ConnectableFluxTest {
 
   }
 
-
   @ParameterizedTest
   @ValueSource(longs = {141_447_917_499_306L})
   void split2In9VirtualSeconds(final long seed) {
@@ -175,14 +183,14 @@ public class ConnectableFluxTest {
     final VirtualTimeScheduler scheduler =
         VirtualTimeScheduler.set(
             VirtualTimeSchedulerInaccurate.create(
-                random, 20, TimeUnit.MILLISECONDS));
+                random, 20, MILLISECONDS));
 
     final Tuple2<SplitterSubscriber, SplitterSubscriber>
         subscribers = doSplittingStuff(
             scheduler,
         100,
         1000,
-        TimeUnit.MILLISECONDS);
+        MILLISECONDS);
 
     scheduler.advanceTimeBy(Duration.ofSeconds(9));
 
@@ -198,14 +206,14 @@ public class ConnectableFluxTest {
     final VirtualTimeScheduler scheduler =
         VirtualTimeScheduler
             .set(VirtualTimeSchedulerInaccurate.create(
-                random, 1, TimeUnit.MINUTES));
+                random, 1, MINUTES));
 
     final Tuple2<SplitterSubscriber, SplitterSubscriber>
         subscribers = doSplittingStuff(
             scheduler,
         2,
         15,
-        TimeUnit.MINUTES);
+        MINUTES);
 
     scheduler.advanceTimeBy(Duration.ofMinutes(135));
 
@@ -285,6 +293,10 @@ public class ConnectableFluxTest {
     System.out.println(
         String.format("%s %s (thread: %s)",
             name, s, Thread.currentThread().getId()));
+  }
+
+  String readableSeed(final Long seed) {
+    return String.format("%,d",seed).replace(',','_') + "L";
   }
 
 }

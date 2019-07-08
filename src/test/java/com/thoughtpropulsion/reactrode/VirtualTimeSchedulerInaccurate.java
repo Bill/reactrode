@@ -45,7 +45,7 @@ public class VirtualTimeSchedulerInaccurate extends VirtualTimeScheduler {
       final long delay,
       final TimeUnit timeUnit) {
 
-    return super.schedule(task, gaussian(delay, timeUnit), NANOSECONDS);
+    return super.schedule(task, gaussian(delay, timeUnit), timeUnit);
   }
 
   @Override
