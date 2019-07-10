@@ -1,7 +1,6 @@
 package com.thoughtpropulsion.reactrode.rxperiment;
 
 import static com.thoughtpropulsion.reactrode.Functional.returning;
-import static java.lang.System.currentTimeMillis;
 import static java.lang.System.nanoTime;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.MINUTES;
@@ -21,13 +20,16 @@ import java.util.stream.Stream;
 
 import com.thoughtpropulsion.reactrode.VirtualTimeSchedulerInaccurate;
 import io.vavr.Tuple2;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.core.publisher.ReplayProcessor;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 import reactor.test.scheduler.VirtualTimeScheduler;
@@ -41,17 +43,24 @@ public class ConnectableFluxTest {
     final Scheduler scheduler;
     final AtomicReference<Subscription> subscription;
     final List<Integer> seen;
+    final Subscriber seenSubscriber;
 
     SplitterSubscriber(
         final String name,
         final Flux<Integer> topic,
-        final Scheduler scheduler) {
+        final Scheduler scheduler,
+        final long frequency,
+        final TimeUnit timeUnit,
+        final Subscriber<List<Integer>> seenSubscriber) {
       this.name = name;
-      this.done = new AtomicBoolean();
-      this.needMore = new AtomicBoolean(true);
+      this.done = new AtomicBoolean(false);
+      this.needMore = new AtomicBoolean(false);
       this.scheduler = scheduler;
+      this.seenSubscriber = seenSubscriber;
       this.subscription = subscribe(name, topic, done, needMore);
       this.seen = new ArrayList<>();
+      scheduler.schedulePeriodically(
+          this::step, 0, frequency, timeUnit);
     }
 
     private AtomicReference<Subscription> subscribe(
@@ -81,10 +90,13 @@ public class ConnectableFluxTest {
                       () -> {
                         log(name, "complete.");
                         done.set(true);
+                        final Mono<List<Integer>> seenMono = Mono.fromSupplier(() -> seen);
+                        seenMono.subscribe(seenSubscriber);
                       },
 
                       subscription -> {
                         subscriptionRef.set(subscription);
+                        needMore.set(true);
                       }));
     }
 
@@ -93,7 +105,7 @@ public class ConnectableFluxTest {
 
      Call this periodically
      */
-    void step() {
+    private void step() {
 
       if (done.get())
         return;
@@ -112,8 +124,8 @@ public class ConnectableFluxTest {
 
     final Scheduler scheduler = Schedulers.parallel();
 
-    final Tuple2<SplitterSubscriber, SplitterSubscriber>
-        subscribers = doSplittingStuff(
+    final Tuple2<Publisher<List<Integer>>, Publisher<List<Integer>>>
+        publishers = doSplittingStuff(
             scheduler,
         100,
         1000,
@@ -121,9 +133,13 @@ public class ConnectableFluxTest {
 
     Thread.sleep(9_000L);
 
-    validate(subscribers);
+    validate(publishers);
 
-    while (!subscribers._1.done.get() || !subscribers._2.done.get()) {
+    final AtomicReference<List<Integer>> fastResult = firstResult(publishers._1);
+
+    final AtomicReference<List<Integer>> slowResult = firstResult(publishers._2);
+
+    while (null == fastResult.get() || null == slowResult.get()) {
       Thread.sleep(10);
     }
   }
@@ -134,17 +150,21 @@ public class ConnectableFluxTest {
 
     final Scheduler scheduler = Schedulers.single();
 
-    final Tuple2<SplitterSubscriber, SplitterSubscriber>
-        subscribers = doSplittingStuff(scheduler,
+    final Tuple2<Publisher<List<Integer>>, Publisher<List<Integer>>>
+        publishers = doSplittingStuff(scheduler,
         100,
         1000,
         MILLISECONDS);
 
     Thread.sleep(9_000L);
 
-    validate(subscribers);
+    validate(publishers);
 
-    while (!subscribers._1.done.get() || !subscribers._2.done.get()) {
+    final AtomicReference<List<Integer>> fastResult = firstResult(publishers._1);
+
+    final AtomicReference<List<Integer>> slowResult = firstResult(publishers._2);
+
+    while (null == fastResult.get() || null == slowResult.get()) {
       Thread.sleep(10);
     }
   }
@@ -175,7 +195,7 @@ public class ConnectableFluxTest {
   }
 
   @ParameterizedTest
-  @ValueSource(longs = {141_447_917_499_306L})
+  @ValueSource(longs = {1_961_772_166_836L})
   void split2In9VirtualSeconds(final long seed) {
 
     random = createRandom(seed);
@@ -185,8 +205,8 @@ public class ConnectableFluxTest {
             VirtualTimeSchedulerInaccurate.create(
                 random, 20, MILLISECONDS));
 
-    final Tuple2<SplitterSubscriber, SplitterSubscriber>
-        subscribers = doSplittingStuff(
+    final Tuple2<Publisher<List<Integer>>, Publisher<List<Integer>>>
+        publishers = doSplittingStuff(
             scheduler,
         100,
         1000,
@@ -194,7 +214,7 @@ public class ConnectableFluxTest {
 
     scheduler.advanceTimeBy(Duration.ofSeconds(9));
 
-    validate(subscribers);
+    validate(publishers);
   }
 
   @ParameterizedTest
@@ -208,8 +228,8 @@ public class ConnectableFluxTest {
             .set(VirtualTimeSchedulerInaccurate.create(
                 random, 1, MINUTES));
 
-    final Tuple2<SplitterSubscriber, SplitterSubscriber>
-        subscribers = doSplittingStuff(
+    final Tuple2<Publisher<List<Integer>>, Publisher<List<Integer>>>
+        publishers = doSplittingStuff(
             scheduler,
         2,
         15,
@@ -217,7 +237,7 @@ public class ConnectableFluxTest {
 
     scheduler.advanceTimeBy(Duration.ofMinutes(135));
 
-    validate(subscribers);
+    validate(publishers);
   }
 
   @Test
@@ -241,18 +261,24 @@ public class ConnectableFluxTest {
   }
 
   private void validate(
-      final Tuple2<SplitterSubscriber, SplitterSubscriber> subscribers) {
+      final Tuple2<Publisher<List<Integer>>,Publisher<List<Integer>>> publishers) {
+
+    final AtomicReference<List<Integer>> fastSeen = firstResult(publishers._1);
+    final AtomicReference<List<Integer>> slowSeen = firstResult(publishers._2);
+
+    assertThat(fastSeen.get()).as("FAST! consumer saw all the items").isNotNull();
+    assertThat(slowSeen.get()).as("slow  consumer saw all the items").isNotNull();
 
     /*
      Have to turn the stream into an iterable to compare it due to AssertJ bug:
      https://github.com/joel-costigliola/assertj-core/issues/1545
      */
     final Iterable<Integer> asList = testSequence().collect(Collectors.toList());
-    assertThat(subscribers._1.seen).isEqualTo(asList);
-    assertThat(subscribers._2.seen).isEqualTo(asList);
+    assertThat(fastSeen.get()).isEqualTo(asList);
+    assertThat(slowSeen.get()).isEqualTo(asList);
   }
 
-  private Tuple2<SplitterSubscriber,SplitterSubscriber> doSplittingStuff(
+  private Tuple2<Publisher<List<Integer>>,Publisher<List<Integer>>> doSplittingStuff(
       final Scheduler scheduler,
       final long fastFrequency,
       final long slowFrequency,
@@ -271,19 +297,16 @@ public class ConnectableFluxTest {
             .publish(3)           // bounded demand
             .autoConnect(2); // number of subscribers to wait for
 
+    final ReplayProcessor<List<Integer>> fastSeen = ReplayProcessor.cacheLast();
+    final ReplayProcessor<List<Integer>> slowSeen = ReplayProcessor.cacheLast();
+
     final SplitterSubscriber fast =
-        new SplitterSubscriber("Fast!", topic, scheduler);
+        new SplitterSubscriber("Fast!", topic, scheduler, fastFrequency, timeUnit, fastSeen);
 
     final SplitterSubscriber slow =
-        new SplitterSubscriber("slow ", topic, scheduler);
+        new SplitterSubscriber("slow ", topic, scheduler, slowFrequency, timeUnit, slowSeen);
 
-    scheduler.schedulePeriodically(
-        () -> fast.step(), 0, fastFrequency, timeUnit);
-
-    scheduler.schedulePeriodically(
-        () -> slow.step(), 0, slowFrequency, timeUnit);
-
-    return new Tuple2<>(fast,slow);
+    return new Tuple2<>(fastSeen,slowSeen);
   }
 
   private Stream<Integer> testSequence() {
@@ -298,6 +321,32 @@ public class ConnectableFluxTest {
 
   String readableSeed(final Long seed) {
     return String.format("%,d",seed).replace(',','_') + "L";
+  }
+
+  private AtomicReference<List<Integer>> firstResult(final Publisher<List<Integer>> publisher) {
+    return returning(new AtomicReference<>(),
+        valueHolder ->
+            publisher.subscribe(new Subscriber<List<Integer>>(){
+
+              @Override
+              public void onSubscribe(final Subscription s) {
+                s.request(1);
+              }
+
+              @Override
+              public void onNext(final List<Integer> o) {
+                valueHolder.set(o);
+              }
+
+              @Override
+              public void onError(final Throwable t) {
+              }
+
+              @Override
+              public void onComplete() {
+              }
+            })
+        );
   }
 
 }
