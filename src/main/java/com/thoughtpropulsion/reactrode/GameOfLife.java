@@ -18,7 +18,7 @@ public class GameOfLife {
 
   public Flux<Cell> createCellsFlux() {
     return Flux.range(0, Integer.MAX_VALUE)
-        .map(offset -> coordinateSystem.createCoordinate(offset))
+        .map(offset -> coordinateSystem.createCoordinates(offset))
         /*
          TODO: if/when we parallelize game state generation, we might want to allow
          some interleaving here via flatMap()
@@ -47,20 +47,20 @@ public class GameOfLife {
 
     final int previousGen = generation - 1;
 
-    return wasAliveCount(coordinateSystem.createCoordinate(x - 1, y + 1, previousGen))
-        .mergeWith(wasAliveCount(coordinateSystem.createCoordinate(x, y + 1, previousGen)))
-        .mergeWith(wasAliveCount(coordinateSystem.createCoordinate(x + 1, y + 1, previousGen)))
+    return wasAliveCount(coordinateSystem.createCoordinates(x - 1, y + 1, previousGen))
+        .mergeWith(wasAliveCount(coordinateSystem.createCoordinates(x, y + 1, previousGen)))
+        .mergeWith(wasAliveCount(coordinateSystem.createCoordinates(x + 1, y + 1, previousGen)))
 
-        .mergeWith(wasAliveCount(coordinateSystem.createCoordinate(x - 1, y, previousGen)))
-        .mergeWith(wasAliveCount(coordinateSystem.createCoordinate(x + 1, y, previousGen)))
+        .mergeWith(wasAliveCount(coordinateSystem.createCoordinates(x - 1, y, previousGen)))
+        .mergeWith(wasAliveCount(coordinateSystem.createCoordinates(x + 1, y, previousGen)))
 
-        .mergeWith(wasAliveCount(coordinateSystem.createCoordinate(x - 1, y - 1, previousGen)))
-        .mergeWith(wasAliveCount(coordinateSystem.createCoordinate(x, y - 1, previousGen)))
-        .mergeWith(wasAliveCount(coordinateSystem.createCoordinate(x + 1, y - 1, previousGen)))
+        .mergeWith(wasAliveCount(coordinateSystem.createCoordinates(x - 1, y - 1, previousGen)))
+        .mergeWith(wasAliveCount(coordinateSystem.createCoordinates(x, y - 1, previousGen)))
+        .mergeWith(wasAliveCount(coordinateSystem.createCoordinates(x + 1, y - 1, previousGen)))
 
         .reduce(0, (a, b) -> a + b)
 
-        .zipWith(wasAlive(coordinateSystem.createCoordinate(x, y, previousGen)))
+        .zipWith(wasAlive(coordinateSystem.createCoordinates(x, y, previousGen)))
 
         .map((t2) -> {
           final int liveNeighbors = t2.getT1();

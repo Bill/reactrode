@@ -18,17 +18,21 @@ public class CoordinateSystem {
   public final int columns; // x
   public final int rows;    // y
 
-  CoordinateSystem(final int columns, final int rows) {
+  public CoordinateSystem(final int columns, final int rows) {
     this.columns = columns;
     this.rows = rows;
   }
 
-  public Coordinates createCoordinate(final int x, final int y, final int generation) {
+  public Coordinates createCoordinates(final int x, final int y, final int generation) {
     // modular arithmetic maps the coordinates parameters into the torus
     return Coordinates.create(Math.floorMod(x,columns), Math.floorMod(y,rows), generation);
   }
 
-  public Coordinates createCoordinate(final int offset) {
+  public Coordinates createCoordinates(final int x, final int y) {
+    return createCoordinates(x,y,0);
+  }
+
+  public Coordinates createCoordinates(final int offset) {
     final int generationSize = columns * rows;
 
     final int generation;

@@ -149,7 +149,7 @@ public class GameStateColdChanges implements GameState {
 
   private Flux<Cell> createColdQueryFlux(final Integer generation) {
     return Flux.<Cell, Coordinates>generate(
-        ()->coordinateSystem.createCoordinate(0,0,generation),
+        ()->coordinateSystem.createCoordinates(0,0,generation),
         (coordinate,sink)-> {
           if (coordinate.generation > generation) {
             sink.complete();
@@ -173,7 +173,7 @@ public class GameStateColdChanges implements GameState {
   }
 
   private Coordinates inc(final Coordinates coordinates) {
-    return coordinateSystem.createCoordinate(
+    return coordinateSystem.createCoordinates(
         coordinateSystem.toOffset(coordinates) + 1);
   }
 

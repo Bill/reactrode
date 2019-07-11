@@ -26,7 +26,7 @@ public class GameOfLifeSystem {
     this.gameOfLife = gameOfLife;
   }
 
-  static GameOfLifeSystem create(
+  public static GameOfLifeSystem create(
       final int columns,
       final int rows,
       final int generationsCached,

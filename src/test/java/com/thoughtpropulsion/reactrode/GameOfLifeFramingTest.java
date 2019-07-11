@@ -47,7 +47,7 @@ class GameOfLifeFramingTest {
 
   private void testFraming(final int skip) {
     final CoordinateSystem cs = gameOfLifeSystem.getCoordinateSystem();
-    final Coordinates expected = cs.createCoordinate(skip);
+    final Coordinates expected = cs.createCoordinates(skip);
     final int offset = expected.x + expected.y * cs.columns;
 
     final Flux<Cell> changes = gameOfLifeSystem.getGameState().changes(expected.generation).skip(offset).take(1);

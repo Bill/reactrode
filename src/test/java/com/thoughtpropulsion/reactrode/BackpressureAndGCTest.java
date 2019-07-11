@@ -39,7 +39,7 @@ class BackpressureAndGCTest {
   // ...it's not possible to read coordinates
   @Test
   void getBeforeAnyCoordinates() {
-    final Coordinates coord = gameOfLifeSystem.getCoordinateSystem().createCoordinate(0);
+    final Coordinates coord = gameOfLifeSystem.getCoordinateSystem().createCoordinates(0);
 
     StepVerifier.create(gameOfLifeSystem.getGameState().get(coord))
         .expectComplete() // nothing to see here--move along
@@ -177,7 +177,7 @@ class BackpressureAndGCTest {
   void fullWindowIsAccessible() {
     final CoordinateSystem coordinateSystem = gameOfLifeSystem.getCoordinateSystem();
     final int lastOffset = coordinateSystem.size() * GENERATIONS_CACHED - 1;
-    final Coordinates lastCoordinates = coordinateSystem.createCoordinate(lastOffset);
+    final Coordinates lastCoordinates = coordinateSystem.createCoordinates(lastOffset);
 
     /*
      Subscribe to generation PRIMORDIAL_GENERATION changes but don't process them. This should cause
@@ -216,7 +216,7 @@ class BackpressureAndGCTest {
       }
     }
     assertThat(took.get()).isNotNull();
-    assertThat(took.get().coordinates).isEqualTo(coordinateSystem.createCoordinate(0));
+    assertThat(took.get().coordinates).isEqualTo(coordinateSystem.createCoordinates(0));
   }
 
 
@@ -233,7 +233,7 @@ class BackpressureAndGCTest {
                     i, startingGeneration, generations));
                 sink.next(
                     Cell.create(
-                        cs.createCoordinate(i),
+                        cs.createCoordinates(i),
                         true));
                 System.out.println(String.format("produced cell %d of (%d,+%d)",
                     i, startingGeneration, generations));

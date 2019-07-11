@@ -11,7 +11,7 @@ class CoordinatesOffsetTest {
     final CoordinateSystem coordinateSystem = new CoordinateSystem(4, 5);
     for(int offset = -10; offset < 10; offset++) {
       // use non-square grid to catch problems where row/column sense is inconsistent
-      final Coordinates coordinates = coordinateSystem.createCoordinate(offset);
+      final Coordinates coordinates = coordinateSystem.createCoordinates(offset);
       assertThat(coordinates.x).isNotNegative();
       assertThat(coordinates.y).isNotNegative();
     }
@@ -23,7 +23,7 @@ class CoordinatesOffsetTest {
     for(int x = -2; x < 2; x++) {
       for(int y = -2; y < 3; y++) {
         // use non-square grid to catch problems where row/column sense is inconsistent
-        final Coordinates coordinates = coordinateSystem.createCoordinate(x,y,0);
+        final Coordinates coordinates = coordinateSystem.createCoordinates(x,y,0);
         assertThat(coordinates.x).isNotNegative();
         assertThat(coordinates.y).isNotNegative();
       }
@@ -35,7 +35,7 @@ class CoordinatesOffsetTest {
     final CoordinateSystem coordinateSystem = new CoordinateSystem(4, 5);
     for(int offset = -2; offset < 2; offset++) {
       // use non-square grid to catch problems where row/column sense is inconsistent
-      final Coordinates coordinates = coordinateSystem.createCoordinate(offset);
+      final Coordinates coordinates = coordinateSystem.createCoordinates(offset);
       assertThat(coordinateSystem.toOffset(coordinates)).isEqualTo(offset);
     }
   }
@@ -61,7 +61,7 @@ class CoordinatesOffsetTest {
   private void checkOffset(final int offset, final int expectGeneration, final int expectY, final int expectX) {
     final CoordinateSystem coordinateSystem = new CoordinateSystem(3, 2);
 
-    final Coordinates actual = coordinateSystem.createCoordinate(offset);
+    final Coordinates actual = coordinateSystem.createCoordinates(offset);
     assertThat(actual.generation).as("generation").isEqualTo(expectGeneration);
     assertThat(actual.y).as("y").isEqualTo(expectY);
     assertThat(actual.x).as("x").isEqualTo(expectX);

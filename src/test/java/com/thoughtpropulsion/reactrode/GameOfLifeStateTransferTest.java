@@ -31,13 +31,13 @@ class GameOfLifeStateTransferTest {
   @Test
   void accessSingleCell() {
     assertThat(
-        gameOfLifeSystem.getGameOfLife().wasAlive(gameOfLifeSystem.getCoordinateSystem().createCoordinate(-1)).block(Duration.ofMillis(10)))
+        gameOfLifeSystem.getGameOfLife().wasAlive(gameOfLifeSystem.getCoordinateSystem().createCoordinates(-1)).block(Duration.ofMillis(10)))
         .isFalse();
   }
 
   @Test
   void singleCellEvolution() {
-    assertThat(gameOfLifeSystem.getGameOfLife().isAlive(gameOfLifeSystem.getCoordinateSystem().createCoordinate(0)).block(Duration.ofMillis(10))).isFalse();
+    assertThat(gameOfLifeSystem.getGameOfLife().isAlive(gameOfLifeSystem.getCoordinateSystem().createCoordinates(0)).block(Duration.ofMillis(10))).isFalse();
   }
 
 }

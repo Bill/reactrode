@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.atomic.LongAdder;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -92,7 +91,7 @@ class GameOfLifeEvolutionTest {
     for (int y = 0; y < rows; y++) {
       for (int x = 0; x < columns; x++) {
         cells.add(Cell.create(
-            gameOfLifeSystem.getCoordinateSystem().createCoordinate(x, y, generation),
+            gameOfLifeSystem.getCoordinateSystem().createCoordinates(x, y, generation),
             bits.get(y * columns + x)));
       }
     }
