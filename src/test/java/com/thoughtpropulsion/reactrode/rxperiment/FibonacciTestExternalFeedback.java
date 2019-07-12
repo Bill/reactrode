@@ -1,10 +1,18 @@
 package com.thoughtpropulsion.reactrode.rxperiment;
 
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+
 import org.junit.jupiter.api.Test;
 import org.reactivestreams.Processor;
+import reactor.core.Disposable;
+import reactor.core.publisher.EmitterProcessor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.UnicastProcessor;
+import reactor.core.scheduler.Schedulers;
 import reactor.test.StepVerifier;
 
 public class FibonacciTestExternalFeedback {
@@ -21,15 +29,21 @@ public class FibonacciTestExternalFeedback {
         .flatMap(pair -> Mono.just(pair.get(0) + pair.get(1)))
         .doOnNext(i -> System.out.println("generated: " + i));
 
+    final AtomicReference<Disposable> stop = new AtomicReference<>();
+
     final Flux<Integer> allValues = Flux
         .concat(Flux.just(0, 1), nextFibonacci)
         .publish()
-        .refCount(2);
+
+        /*
+         refCount(2) isn't what we want because it doesn't disconnect when
+         count drops below 2---it disconnects when count drops below zero
+         */
+//        .refCount(2)
 
         /*
          Without a limitRequest() (or maybe take()), nextFibonacci keeps
-         generating values ahead of the StepVerifier's demand, and the
-         StepVerifier starves---I don't think it ever sees any values.
+         generating values after the StepVerifier finishes.
 
          It's puzzling because I thought the ConnectableFlux produced by
          publish() would throttle down the upstream demand to that of its
@@ -38,9 +52,13 @@ public class FibonacciTestExternalFeedback {
 
         //.limitRequest(6);
 
+        // _this_ is what we need---capture the Disposable for later
+        .autoConnect(2,stop::set);
+
     allValues.subscribe(feedback);
 
-    StepVerifier.create(allValues.take(6))
+    // stop demand after test completes!
+    StepVerifier.create(allValues.take(6).doAfterTerminate(() -> stop.get().dispose()))
         .expectNext(0,1,1,2,3,5)
         .expectComplete()
         .verify();
