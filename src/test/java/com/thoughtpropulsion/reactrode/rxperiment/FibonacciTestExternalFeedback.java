@@ -1,5 +1,8 @@
 package com.thoughtpropulsion.reactrode.rxperiment;
 
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
@@ -9,6 +12,7 @@ import reactor.core.publisher.EmitterProcessor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.UnicastProcessor;
+import reactor.core.scheduler.Schedulers;
 import reactor.test.StepVerifier;
 
 public class FibonacciTestExternalFeedback {
@@ -53,12 +57,10 @@ public class FibonacciTestExternalFeedback {
 
     allValues.subscribe(feedback);
 
-    StepVerifier.create(allValues.take(6))
-        .expectNext(0,1,1,2,3,6)
+    // stop demand after test completes!
+    StepVerifier.create(allValues.take(6).doAfterTerminate(() -> stop.get().dispose()))
+        .expectNext(0,1,1,2,3,5)
         .expectComplete()
         .verify();
-
-    // ...and stop the flow after the test is done!
-    stop.get().dispose();
   }
 }
