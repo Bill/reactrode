@@ -28,16 +28,22 @@ public class GameOfLife {
     final Flux<Cell> futureGenerations =
         Flux.from(primordialGenerationPublisher)
             .buffer(coordinateSystem.size())
+            // this flatMap converts a single (primordial) generation to many (future) ones
             .flatMap(primordialGeneration ->
                 Flux.generate(
                     () -> primordialGeneration,
                     (List<Cell> oldGeneration, SynchronousSink<List<Cell>> sink) ->
                         returning(
-                            nextGenerationStream(oldGeneration).collect(Collectors.toList()),
+                            nextGenerationList(oldGeneration),
                             newGeneration -> sink.next(newGeneration))))
+            // this flatMap expands each generation to its constituent cells
             .flatMap(generation -> Flux.fromIterable(generation));
 
     completeHistory = Flux.concat(primordialGenerationPublisher,futureGenerations);
+  }
+
+  private List<Cell> nextGenerationList(final List<Cell> oldGeneration) {
+    return nextGenerationStream(oldGeneration).collect(Collectors.toList());
   }
 
   public Publisher<Cell> getCompleteHistory() {
