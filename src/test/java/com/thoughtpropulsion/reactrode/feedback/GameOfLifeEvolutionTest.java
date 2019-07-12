@@ -131,8 +131,10 @@ class GameOfLifeEvolutionTest {
 
   private void validatePattern(final Iterable<Cell> pattern, final Publisher<Cell> newLife) {
 
+    final int generationSize = gameOfLifeSystem.getCoordinateSystem().size();
+
     final Flux<Cell> newGeneration = Flux
-        .from(newLife).take(gameOfLifeSystem.getCoordinateSystem().size());
+        .from(newLife).skip(generationSize).take(generationSize);
 
     StepVerifier.create(newGeneration)
         .expectNextSequence(pattern)

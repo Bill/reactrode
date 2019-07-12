@@ -22,6 +22,7 @@ public class GameOfLife {
 
     newLife = Flux
         .from(history)
+        .doOnNext(cell-> System.out.println("considering cell: " + cell))
         // we need a full generation-worth of cells to compute the next generation
         .buffer(coordinateSystem.size())
         .flatMap(oldGeneration -> Flux.fromStream(nextGenerationStream(oldGeneration)));

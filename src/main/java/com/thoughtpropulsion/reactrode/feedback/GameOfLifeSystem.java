@@ -10,7 +10,7 @@ import reactor.core.publisher.Flux;
 public class GameOfLifeSystem {
   private final CoordinateSystem coordinateSystem;
   private final Publisher<Cell> newLife;
-  
+
   public CoordinateSystem getCoordinateSystem() {
     return coordinateSystem;
   }
@@ -32,50 +32,45 @@ public class GameOfLifeSystem {
     this.coordinateSystem = coordinateSystem;
 
     /*
-     If we feedback (our output to our input) through an EmitterProcessor,
-     and an EmitterProcessor throttles on its slowest consumer then it seems
-     we might stall unless we build in a generation-size buffer (demand)
-     hence the buffer size in the constructor here.
+     We're setting up a feedback loop:
+
+    ---------------------------------------------------------------------------
+   |                                                                           |
+   | (3)                                                                       |
+    -> (Game) -> (game.newLife) ->   (4)    (5)      (1)                       |
+                                   allCells -> (emitterProcessor == newLife) ->
+           primordialGeneration ->                                             |
+                                                                           (2)  -> newLifeSubscriber
      */
-    final EmitterProcessor<Cell> emitterProcessor =
-        EmitterProcessor.create(/*coordinateSystem.size()*/);
+
+
+    final EmitterProcessor<Cell> emitterProcessor = EmitterProcessor.create();
 
     newLife = emitterProcessor;
 
     /*
-     We're setting up a feedback loop:
-
-                           -----------------------------------------------------------------------
-                          |                                                                       |
-                           ->        (3)       (4)                          (5)        (1)        |
-                              combinedGameInput -> (Game) -> (game.newLife) -> emitterProcessor ->
-      primordialGeneration ->                                                                     |
-                                                                                              (2)  -> newLifeSubscriber
-
-     */
-
-
-    /*
-     We gotta connect e.p. -> newLifeSubscriber before we set up the feedback loop lest
+     (2) We gotta connect e.p. -> newLifeSubscriber before we set up the feedback loop lest
      that subscriber miss the whole show. If we subscriber later, that subscriber is starved.
      TODO: confirm w/ Project Reactor folks that that starvation really happens and isn't a bug
      */
     emitterProcessor.subscribe(newLifeSubscriber);
 
+    // (3) emitter processor provides history input to the game: e.p. -> game
+    final GameOfLife gameOfLife = new GameOfLife(this.coordinateSystem, emitterProcessor);
+
     /*
-     EmitterProcessor can Publish to many Subscribers, but it cannot Subscribe
+     (4) EmitterProcessor can Publish to many Subscribers, but it cannot Subscribe
      to many Publishers. Since it can subscribe to only one, we must combine
      the primordial generation and the new life (produced by the game) into a single
      flux and have the EmitterProcessor subscribe to that.
      */
-    final Flux<Cell> combinedGameInput = Flux.concat(
+    final Flux<Cell> allCells = Flux.concat(
         primordialGeneration,
-        emitterProcessor);
+        gameOfLife.getNewLife());
 
-    // emitter processor provides history input to the game: e.p. -> game
-    final GameOfLife gameOfLife = new GameOfLife(this.coordinateSystem, combinedGameInput);
 
-    gameOfLife.getNewLife().subscribe(emitterProcessor);
+    // (5)
+    allCells.subscribe(emitterProcessor);
   }
 
   private GameOfLifeSystem(
@@ -84,12 +79,17 @@ public class GameOfLifeSystem {
 
     this.coordinateSystem = coordinateSystem;
 
+    /*
+     We're setting up a simple (not all that useful) linear flow for testing
+
+     primordialGeneration -> (Game) -> (game.newLife == newLife)
+     */
+
     final GameOfLife gameOfLife;
 
     gameOfLife = new GameOfLife(this.coordinateSystem, primordialGeneration);
 
     newLife = gameOfLife.getNewLife();
-
  }
 
   public static GameOfLifeSystem createWithFeedback(
