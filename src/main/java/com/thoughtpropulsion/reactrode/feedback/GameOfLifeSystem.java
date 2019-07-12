@@ -4,8 +4,10 @@ import com.thoughtpropulsion.reactrode.Cell;
 import com.thoughtpropulsion.reactrode.CoordinateSystem;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
+import reactor.core.publisher.ConnectableFlux;
 import reactor.core.publisher.EmitterProcessor;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.UnicastProcessor;
 
 public class GameOfLifeSystem {
   private final CoordinateSystem coordinateSystem;
@@ -22,7 +24,6 @@ public class GameOfLifeSystem {
    *
    * @param primordialGeneration
    * @param coordinateSystem
-   * @param newLifeSubscriber is the downstream subscriber that wants to receive new life (cells)
    */
   private GameOfLifeSystem(
       final Publisher<Cell> primordialGeneration,
@@ -34,32 +35,26 @@ public class GameOfLifeSystem {
     /*
      We're setting up a feedback loop:
 
-    ---------------------------------------------------------------------------
-   |                                                                           |
-   | (3)                                                                       |
-    -> (Game) -> (game.newLife) ->   (4)    (5)      (1)                       |
-                                   allCells -> (emitterProcessor == newLife) ->
-           primordialGeneration ->                                             |
-                                                                           (2)  -> newLifeSubscriber
+                                               (1)            <-- (5) <--
+  --------------------------------------emitterProcessor----------------------
+ |                                                                             |
+ |     (2)                                                                     |
+  -> (Game) -> (game.newLife) ->   (3)             (4)                         |
+                                 allCells -> (connectableFlux(2) == newLife) ->
+         primordialGeneration ->                                               |
+                                                                           (6)  -> newLifeSubscriber
+
      */
 
 
+    // (1) we need a processor in the chain to break the loop (try without it if you don't believe)
     final EmitterProcessor<Cell> emitterProcessor = EmitterProcessor.create();
 
-    newLife = emitterProcessor;
-
-    /*
-     (2) We gotta connect e.p. -> newLifeSubscriber before we set up the feedback loop lest
-     that subscriber miss the whole show. If we subscriber later, that subscriber is starved.
-     TODO: confirm w/ Project Reactor folks that that starvation really happens and isn't a bug
-     */
-    emitterProcessor.subscribe(newLifeSubscriber);
-
-    // (3) emitter processor provides history input to the game: e.p. -> game
+    // (2) emitter processor provides history input to the game
     final GameOfLife gameOfLife = new GameOfLife(this.coordinateSystem, emitterProcessor);
 
     /*
-     (4) EmitterProcessor can Publish to many Subscribers, but it cannot Subscribe
+     (3) EmitterProcessor can Publish to many Subscribers, but it cannot Subscribe
      to many Publishers. Since it can subscribe to only one, we must combine
      the primordial generation and the new life (produced by the game) into a single
      flux and have the EmitterProcessor subscribe to that.
@@ -68,9 +63,11 @@ public class GameOfLifeSystem {
         primordialGeneration,
         gameOfLife.getNewLife());
 
+    // (4) callers can connect to this flux
+    newLife = Flux.from(allCells).publish().refCount(2);
 
     // (5)
-    allCells.subscribe(emitterProcessor);
+    newLife.subscribe(emitterProcessor);
   }
 
   private GameOfLifeSystem(
