@@ -7,7 +7,7 @@ import reactor.core.publisher.Mono;
 import reactor.core.publisher.UnicastProcessor;
 import reactor.test.StepVerifier;
 
-public class FibonacciTest {
+public class FibonacciTestExternalFeedback {
 
   @Test
   void fibTest() {
