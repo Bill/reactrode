@@ -22,7 +22,7 @@ public class FibonacciTest {
         .doOnNext(i -> System.out.println("generated: " + i));
 
     final Flux<Integer> allValues = Flux
-        .concat(Flux.just(1, 2), nextFibonacci)
+        .concat(Flux.just(0, 1), nextFibonacci)
         .publish()
         .refCount(2);
 
@@ -36,12 +36,12 @@ public class FibonacciTest {
          slowest subscriber, which in this case should be the StepVerifier.
          */
 
-        //.limitRequest(6);
+//        .limitRequest(6);
 
     allValues.subscribe(feedback);
 
     StepVerifier.create(allValues)
-        .expectNext(1,2,3,5,8,13)
+        .expectNext(0,1,1,2,3,5)
         .expectComplete()
         .verify();
   }
