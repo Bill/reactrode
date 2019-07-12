@@ -1,6 +1,10 @@
 package com.thoughtpropulsion.reactrode.feedback;
 
+import static com.thoughtpropulsion.reactrode.Functional.returning;
+
 import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.thoughtpropulsion.reactrode.Cell;
@@ -8,28 +12,36 @@ import com.thoughtpropulsion.reactrode.CoordinateSystem;
 import com.thoughtpropulsion.reactrode.Coordinates;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.SynchronousSink;
 
 public class GameOfLife {
 
   final CoordinateSystem coordinateSystem;
-  private final Publisher<Cell> newLife;
+  private final Publisher<Cell> completeHistory;
 
   public GameOfLife(
       final CoordinateSystem coordinateSystem,
-      final Publisher<Cell> history) {
+      final Publisher<Cell> primordialGenerationPublisher) {
 
     this.coordinateSystem = coordinateSystem;
 
-    newLife = Flux
-        .from(history)
-        .doOnNext(cell-> System.out.println("considering cell: " + cell))
-        // we need a full generation-worth of cells to compute the next generation
-        .buffer(coordinateSystem.size())
-        .flatMap(oldGeneration -> Flux.fromStream(nextGenerationStream(oldGeneration)));
+    final Flux<Cell> futureGenerations =
+        Flux.from(primordialGenerationPublisher)
+            .buffer(coordinateSystem.size())
+            .flatMap(primordialGeneration ->
+                Flux.generate(
+                    () -> primordialGeneration,
+                    (List<Cell> oldGeneration, SynchronousSink<List<Cell>> sink) ->
+                        returning(
+                            nextGenerationStream(oldGeneration).collect(Collectors.toList()),
+                            newGeneration -> sink.next(newGeneration))))
+            .flatMap(generation -> Flux.fromIterable(generation));
+
+    completeHistory = Flux.concat(primordialGenerationPublisher,futureGenerations);
   }
 
-  public Publisher<Cell> getNewLife() {
-    return newLife;
+  public Publisher<Cell> getCompleteHistory() {
+    return completeHistory;
   }
 
   private Stream<Cell> nextGenerationStream(final Collection<Cell> previousGeneration) {

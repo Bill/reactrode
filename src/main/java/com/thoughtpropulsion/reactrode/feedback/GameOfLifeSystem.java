@@ -4,10 +4,8 @@ import com.thoughtpropulsion.reactrode.Cell;
 import com.thoughtpropulsion.reactrode.CoordinateSystem;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.core.publisher.ConnectableFlux;
 import reactor.core.publisher.EmitterProcessor;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.UnicastProcessor;
 
 public class GameOfLifeSystem {
   private final CoordinateSystem coordinateSystem;
@@ -61,7 +59,7 @@ public class GameOfLifeSystem {
      */
     final Flux<Cell> allCells = Flux.concat(
         primordialGeneration,
-        gameOfLife.getNewLife());
+        gameOfLife.getCompleteHistory());
 
     // (4) callers can connect to this flux
     newLife = Flux.from(allCells).publish().refCount(2);
@@ -86,7 +84,7 @@ public class GameOfLifeSystem {
 
     gameOfLife = new GameOfLife(this.coordinateSystem, primordialGeneration);
 
-    newLife = gameOfLife.getNewLife();
+    newLife = gameOfLife.getCompleteHistory();
  }
 
   public static GameOfLifeSystem createWithFeedback(

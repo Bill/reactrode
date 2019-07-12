@@ -44,17 +44,21 @@ class GameOfLifeEvolutionTest {
 
     final CoordinateSystem coordinateSystem = new CoordinateSystem(4, 5);
 
-    // TODO: figure out why DirectProcessor didn't work here (didn't see any cells!)
-    final Processor<Cell,Cell> testProbe = UnicastProcessor.create();
-
-    gameOfLifeSystem = GameOfLifeSystem.createWithFeedback(
+    gameOfLifeSystem = GameOfLifeSystem.createWithoutFeedback(
         Flux.fromIterable(cellsFromBits(pattern, PRIMORDIAL_GENERATION, coordinateSystem)),
-        coordinateSystem,
-        testProbe);
+        coordinateSystem);
+
+    validatePattern(
+        cellsFromBits(pattern, PRIMORDIAL_GENERATION, coordinateSystem),
+        Flux.from(gameOfLifeSystem.getNewLife()).take(coordinateSystem.size()));
+
+    gameOfLifeSystem = GameOfLifeSystem.createWithoutFeedback(
+        Flux.fromIterable(cellsFromBits(pattern, PRIMORDIAL_GENERATION, coordinateSystem)),
+        coordinateSystem);
 
     validatePattern(
         cellsFromBits(pattern, PRIMORDIAL_GENERATION + 1, coordinateSystem),
-        gameOfLifeSystem.getNewLife());
+        Flux.from(gameOfLifeSystem.getNewLife()).skip(coordinateSystem.size()).take(coordinateSystem.size()));
   }
 
   @Test
@@ -79,28 +83,22 @@ class GameOfLifeEvolutionTest {
 
     final CoordinateSystem coordinateSystem = new CoordinateSystem(5, 5);
 
-    Processor<Cell,Cell> testProbe = UnicastProcessor.create();
-
-    gameOfLifeSystem = GameOfLifeSystem.createWithFeedback(
+    gameOfLifeSystem = GameOfLifeSystem.createWithoutFeedback(
         Flux.fromIterable(cellsFromBits(a, PRIMORDIAL_GENERATION, coordinateSystem)),
-        coordinateSystem,
-        testProbe);
+        coordinateSystem);
 
     validatePattern(
         cellsFromBits(b, PRIMORDIAL_GENERATION + 1, coordinateSystem),
-        gameOfLifeSystem.getNewLife()
+        Flux.from(gameOfLifeSystem.getNewLife()).skip(coordinateSystem.size()).take(coordinateSystem.size())
     );
 
-    testProbe = UnicastProcessor.create();
-
-    gameOfLifeSystem = GameOfLifeSystem.createWithFeedback(
+    gameOfLifeSystem = GameOfLifeSystem.createWithoutFeedback(
         Flux.fromIterable(cellsFromBits(b, PRIMORDIAL_GENERATION + 1, coordinateSystem)),
-        coordinateSystem,
-        testProbe);
+        coordinateSystem);
 
     validatePattern(
         cellsFromBits(a, PRIMORDIAL_GENERATION + 2, coordinateSystem),
-        gameOfLifeSystem.getNewLife()
+        Flux.from(gameOfLifeSystem.getNewLife()).skip(coordinateSystem.size()).take(coordinateSystem.size())
     );
   }
 
@@ -126,24 +124,10 @@ class GameOfLifeEvolutionTest {
   }
 
   private void validatePattern(final Iterable<Cell> pattern, final Publisher<Cell> allHistory) {
-
-    final int generationSize = gameOfLifeSystem.getCoordinateSystem().size();
-
-//    for (final Cell cell : pattern) {
-//      System.out.println("pattern cell: " + cell);
-//    }
-
-    Flux.from(allHistory).take(100).subscribe(cell -> System.out.println("test sees: " + cell));
-//
-//    final Flux<Cell> newGeneration = Flux
-//        .from(allHistory).skip(generationSize).take(generationSize).limitRequest(2*generationSize)
-//        .doOnNext(cell-> System.out.println("test sees: " + cell));
-//
-//    StepVerifier.create(allHistory)
-//        .expectNextSequence(pattern)
-//        .expectComplete()
-//        .verify();
+    StepVerifier.create(allHistory)
+        .expectNextSequence(pattern)
+        .expectComplete()
+        .verify();
   }
-
 
 }
