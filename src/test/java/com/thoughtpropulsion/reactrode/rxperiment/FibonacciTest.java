@@ -36,11 +36,11 @@ public class FibonacciTest {
          slowest subscriber, which in this case should be the StepVerifier.
          */
 
-//        .limitRequest(6);
+        //.limitRequest(6);
 
     allValues.subscribe(feedback);
 
-    StepVerifier.create(allValues)
+    StepVerifier.create(allValues.take(6))
         .expectNext(0,1,1,2,3,5)
         .expectComplete()
         .verify();
