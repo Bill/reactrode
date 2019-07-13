@@ -20,13 +20,50 @@ public class Coordinates implements Comparable<Coordinates> {
           .thenComparing(c -> c.x);
 
   // for use by CoordinateSystem only
-  static Coordinates create(final int x, final int y, final int generation) {
+  public static Coordinates create(final int x, final int y, final int generation) {
     return new Coordinates(x,y,generation);
   }
 
   private Coordinates(final int x, final int y, final int generation) {
     this.x = x; this.y = y; this.generation = generation;
   }
+
+  /*
+   Create coordinates at compass points relative to receiver
+   */
+
+  public Coordinates n() {
+    return new Coordinates(x,y+1,generation);
+  }
+
+  public Coordinates s() {
+    return new Coordinates(x,y-1,generation);
+  }
+
+  public Coordinates e() {
+    return new Coordinates(x+1,y,generation);
+  }
+
+  public Coordinates w() {
+    return new Coordinates(x-1,y,generation);
+  }
+
+  public Coordinates ne() {
+    return new Coordinates(x+1,y+1,generation);
+  }
+
+  public Coordinates se() {
+    return new Coordinates(x+1,y-1,generation);
+  }
+
+  public Coordinates sw() {
+    return new Coordinates(x-1,y-1,generation);
+  }
+
+  public Coordinates nw() {
+    return new Coordinates(x-1,y+1,generation);
+  }
+
 
   public static Coordinates max(final Coordinates a, final Coordinates b) {
     if (a.compareTo(b) < 0)

@@ -2,13 +2,11 @@ package com.thoughtpropulsion.reactrode;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Hooks;
 import reactor.test.StepVerifier;
@@ -16,7 +14,6 @@ import reactor.test.StepVerifier;
 class GameOfLifeEvolutionTest {
 
   private static final int PRIMORDIAL_GENERATION = -1;
-  private static final int GENERATIONS_CACHED = 3;
   private GameOfLifeSystem gameOfLifeSystem;
 
   @BeforeAll
@@ -31,20 +28,31 @@ class GameOfLifeEvolutionTest {
       This pattern is non-square to uncover bugs where row/column sense is inconsistent.
      */
 
-    gameOfLifeSystem = GameOfLifeSystem.create(4, 5, GENERATIONS_CACHED,
-        PRIMORDIAL_GENERATION);
-
-    final List<Boolean> pattern = toPattern(0, 0, 0, 0,
+    final List<Boolean> pattern = SystemTestSupport.toPattern(0, 0, 0, 0,
         0, 1, 1, 0,
         0, 1, 1, 0,
         0, 0, 0, 0,
         0, 0, 0, 0);
 
-    paintPattern(cellsFromBits(4, 5,
-        pattern, PRIMORDIAL_GENERATION));
+    final CoordinateSystem coordinateSystem = new CoordinateSystem(4, 5);
 
-    validatePattern(cellsFromBits(4, 5,
-        pattern, PRIMORDIAL_GENERATION + 1), 0);
+    gameOfLifeSystem = GameOfLifeSystem.create(
+        Flux.fromIterable(
+            SystemTestSupport.cellsFromBits(pattern, PRIMORDIAL_GENERATION, coordinateSystem)),
+        coordinateSystem);
+
+    validatePattern(
+        SystemTestSupport.cellsFromBits(pattern, PRIMORDIAL_GENERATION, coordinateSystem),
+        Flux.from(gameOfLifeSystem.getAllGenerations()).take(coordinateSystem.size()));
+
+    gameOfLifeSystem = GameOfLifeSystem.create(
+        Flux.fromIterable(
+            SystemTestSupport.cellsFromBits(pattern, PRIMORDIAL_GENERATION, coordinateSystem)),
+        coordinateSystem);
+
+    validatePattern(
+        SystemTestSupport.cellsFromBits(pattern, PRIMORDIAL_GENERATION + 1, coordinateSystem),
+        Flux.from(gameOfLifeSystem.getAllGenerations()).skip(coordinateSystem.size()).take(coordinateSystem.size()));
   }
 
   @Test
@@ -54,15 +62,12 @@ class GameOfLifeEvolutionTest {
      "blinker" is a form that oscillates with period 2.
      */
 
-    gameOfLifeSystem = GameOfLifeSystem.create(5, 5, GENERATIONS_CACHED,
-        PRIMORDIAL_GENERATION);
-
-    final List<Boolean> a = toPattern(0, 0, 0, 0, 0,
+    final List<Boolean> a = SystemTestSupport.toPattern(0, 0, 0, 0, 0,
         0, 0, 0, 0, 0,
         0, 1, 1, 1, 0,
         0, 0, 0, 0, 0,
         0, 0, 0, 0, 0);
-    final List<Boolean> b = toPattern(0, 0, 0, 0, 0,
+    final List<Boolean> b = SystemTestSupport.toPattern(0, 0, 0, 0, 0,
         0, 0, 1, 0, 0,
         0, 0, 1, 0, 0,
         0, 0, 1, 0, 0,
@@ -70,46 +75,30 @@ class GameOfLifeEvolutionTest {
 
     assertThat(b.size()).as("generation sizes are equal").isEqualTo(a.size());
 
-    paintPattern(cellsFromBits(5, 5, a, PRIMORDIAL_GENERATION));
+    final CoordinateSystem coordinateSystem = new CoordinateSystem(5, 5);
 
-    validatePattern(cellsFromBits(5, 5,
-        b, PRIMORDIAL_GENERATION + 1), 0);
+    gameOfLifeSystem = GameOfLifeSystem.create(
+        Flux.fromIterable(SystemTestSupport.cellsFromBits(a, PRIMORDIAL_GENERATION, coordinateSystem)),
+        coordinateSystem);
 
-    validatePattern(cellsFromBits(5, 5,
-        a, PRIMORDIAL_GENERATION + 2), 1);
+    validatePattern(
+        SystemTestSupport.cellsFromBits(b, PRIMORDIAL_GENERATION + 1, coordinateSystem),
+        Flux.from(gameOfLifeSystem.getAllGenerations()).skip(coordinateSystem.size()).take(coordinateSystem.size())
+    );
 
+    gameOfLifeSystem = GameOfLifeSystem.create(
+        Flux.fromIterable(
+            SystemTestSupport.cellsFromBits(b, PRIMORDIAL_GENERATION + 1, coordinateSystem)),
+        coordinateSystem);
+
+    validatePattern(
+        SystemTestSupport.cellsFromBits(a, PRIMORDIAL_GENERATION + 2, coordinateSystem),
+        Flux.from(gameOfLifeSystem.getAllGenerations()).skip(coordinateSystem.size()).take(coordinateSystem.size())
+    );
   }
 
-  private List<Boolean> toPattern(final int... bits) {
-    return Arrays.stream(bits).boxed().map(b -> b == 1)
-        .collect(Collectors.toList());
-  }
-
-  private List<Cell> cellsFromBits(final int columns, final int rows,
-                                   final List<Boolean> bits, final int generation) {
-    final List<Cell> cells = new ArrayList<>(columns * rows);
-    for (int y = 0; y < rows; y++) {
-      for (int x = 0; x < columns; x++) {
-        cells.add(Cell.create(
-            gameOfLifeSystem.getCoordinateSystem().createCoordinates(x, y, generation),
-            bits.get(y * columns + x)));
-      }
-    }
-    return cells;
-  }
-
-  private void paintPattern(final Iterable<Cell> pattern) {
-    Flux.fromIterable(pattern).delayUntil(cell -> gameOfLifeSystem.getGameState().put(cell));
-    gameOfLifeSystem.getGameState().putAll(Flux.fromIterable(pattern));
-  }
-
-  private void validatePattern(final Iterable<Cell> pattern, final int generationNumber) {
-
-    final Flux<Cell> generation = gameOfLifeSystem.getGameState().changes(generationNumber);
-
-    gameOfLifeSystem.startGame();
-
-    StepVerifier.create(generation)
+  private void validatePattern(final Iterable<Cell> pattern, final Publisher<Cell> allHistory) {
+    StepVerifier.create(allHistory)
         .expectNextSequence(pattern)
         .expectComplete()
         .verify();

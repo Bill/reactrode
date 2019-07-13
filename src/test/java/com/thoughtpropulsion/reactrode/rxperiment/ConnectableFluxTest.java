@@ -18,7 +18,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.thoughtpropulsion.reactrode.VirtualTimeSchedulerInaccurate;
 import io.vavr.Tuple2;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;

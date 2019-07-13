@@ -1,60 +1,33 @@
 package com.thoughtpropulsion.reactrode;
 
-/**
- * Handle assembly of the system, with dependency injection, and provide access to
- * system components.
- */
+import org.reactivestreams.Publisher;
+
 public class GameOfLifeSystem {
   private final CoordinateSystem coordinateSystem;
-  private final GameOfLife gameOfLife;
-  private final GameState gameState;
+  private final Publisher<Cell> allGenerations;
 
   public CoordinateSystem getCoordinateSystem() {
     return coordinateSystem;
   }
-  public GameState getGameState() {
-    return gameState;
-  }
-  public GameOfLife getGameOfLife() {
-    return gameOfLife;
-  }
 
-  private GameOfLifeSystem(final CoordinateSystem coordinateSystem,
-                           final GameState gameState, final GameOfLife gameOfLife) {
+  public Publisher<Cell> getAllGenerations() { return allGenerations;}
+
+  private GameOfLifeSystem(
+      final Publisher<Cell> primordialGenerationPublisher,
+      final CoordinateSystem coordinateSystem) {
+
     this.coordinateSystem = coordinateSystem;
-    this.gameState = gameState;
-    this.gameOfLife = gameOfLife;
-  }
+
+    final GameOfLife gameOfLife;
+
+    gameOfLife = new GameOfLife(this.coordinateSystem, primordialGenerationPublisher);
+
+    allGenerations = gameOfLife.getAllGenerations();
+ }
 
   public static GameOfLifeSystem create(
-      final int columns,
-      final int rows,
-      final int generationsCached,
-      final int primordialGeneration) {
-    final CoordinateSystem coordinateSystem = new CoordinateSystem(columns, rows);
-    final GameState gameState =
-        new GameStateWithBackpressure(generationsCached, coordinateSystem, primordialGeneration);
-    return new GameOfLifeSystem(coordinateSystem, gameState, new GameOfLife(coordinateSystem,
-        gameState));
+      final Publisher<Cell> primordialGenerationPublisher,
+      final CoordinateSystem coordinateSystem) {
+    return new GameOfLifeSystem(primordialGenerationPublisher, coordinateSystem);
   }
-
-  void startGame() {
-    // TODO: change this to subscribe here-- don't rely on putAll() to do it
-    // because that will eventually be in another VM!
-    gameState.putAll(gameOfLife.createCellsFlux());
-  }
-
-  /*
-   This shows how we could provide cells to the game state in parallel
-   */
-  private void startGame2() {
-    // TODO: change this to subscribe here-- don't rely on putAll() to do it
-    // because that will eventually be in another VM!
-    gameOfLife.createCellsFlux()
-        .log()
-        .flatMap(cell -> gameState.put(cell), 5)
-        .subscribe();
-  }
-
-
 }

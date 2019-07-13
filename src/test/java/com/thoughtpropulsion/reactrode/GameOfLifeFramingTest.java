@@ -1,5 +1,7 @@
 package com.thoughtpropulsion.reactrode;
 
+import java.util.List;
+
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -11,22 +13,32 @@ import reactor.test.StepVerifier;
 
 class GameOfLifeFramingTest {
 
-  private static int PRIMORDIAL_GENERATION = -1;
+  private static int PRIMORDIAL_GENERATION = 0;
   // make the board non-square to catch bugs where the row/column sense is inconsistent
-  private static final int COLUMNS = 8;
+  private static final int COLUMNS = 5;
   private static final int ROWS = 4;
-  private static final int GENERATIONS_CACHED = 3;
 
   private GameOfLifeSystem gameOfLifeSystem;
+  private CoordinateSystem coordinateSystem;
 
   @BeforeAll
   static void beforeAll() { Hooks.onOperatorDebug();}
 
   @BeforeEach
   void beforeEach() {
-    gameOfLifeSystem = GameOfLifeSystem.create(COLUMNS, ROWS, GENERATIONS_CACHED,
-        PRIMORDIAL_GENERATION);
-    SystemTestSupport.initializePrimordialGeneration(gameOfLifeSystem);
+    coordinateSystem = new CoordinateSystem(COLUMNS, ROWS);
+
+    final List<Boolean> pattern = SystemTestSupport.toPattern(0, 0, 0, 0,
+        0, 1, 1, 0,
+        0, 1, 1, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0);
+
+    final Iterable<Cell>
+        primordialGeneration =
+        SystemTestSupport.cellsFromBits(pattern, PRIMORDIAL_GENERATION, coordinateSystem);
+
+    gameOfLifeSystem = GameOfLifeSystem.create(Flux.fromIterable(primordialGeneration),coordinateSystem);
   }
 
   @ParameterizedTest
@@ -48,11 +60,11 @@ class GameOfLifeFramingTest {
   private void testFraming(final int skip) {
     final CoordinateSystem cs = gameOfLifeSystem.getCoordinateSystem();
     final Coordinates expected = cs.createCoordinates(skip);
-    final int offset = expected.x + expected.y * cs.columns;
 
-    final Flux<Cell> changes = gameOfLifeSystem.getGameState().changes(expected.generation).skip(offset).take(1);
-
-    gameOfLifeSystem.startGame();
+    final Flux<Cell> changes =
+        Flux.from(gameOfLifeSystem.getAllGenerations())
+            .skip(skip)
+            .take(1);
 
     StepVerifier.create(changes)
         .expectNextMatches(got -> got.coordinates.equals(expected))

@@ -1,4 +1,4 @@
-package com.thoughtpropulsion.reactrode;
+package com.thoughtpropulsion.reactrode.rxperiment;
 
 import static com.thoughtpropulsion.reactrode.Functional.returning;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;

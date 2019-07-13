@@ -1,108 +1,146 @@
 package com.thoughtpropulsion.reactrode;
 
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
+import static com.thoughtpropulsion.reactrode.Functional.returning;
 
-/**
- * Generate states for Conway's Game of Life.
- */
+import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import com.thoughtpropulsion.reactrode.Cell;
+import com.thoughtpropulsion.reactrode.CoordinateSystem;
+import com.thoughtpropulsion.reactrode.Coordinates;
+import org.reactivestreams.Publisher;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.SynchronousSink;
+
 public class GameOfLife {
 
-  private final CoordinateSystem coordinateSystem;
-  private final GameState gameState;
+  final CoordinateSystem coordinateSystem;
+  private final Publisher<Cell> allGenerations;
 
-  public GameOfLife(final CoordinateSystem coordinateSystem, final GameState gameState) {
+  public GameOfLife(
+      final CoordinateSystem coordinateSystem,
+      final Publisher<Cell> primordialGenerationPublisher) {
+
     this.coordinateSystem = coordinateSystem;
-    this.gameState = gameState;
+
+    final Flux<Cell> futureGenerations =
+        Flux.from(primordialGenerationPublisher)
+            .buffer(coordinateSystem.size())
+            // this flatMap converts a single (primordial) generation to many (future) ones
+            .flatMap(primordialGeneration ->
+                Flux.generate(
+                    () -> primordialGeneration,
+                    (List<Cell> oldGeneration, SynchronousSink<List<Cell>> sink) ->
+                        returning(
+                            nextGenerationList(oldGeneration),
+                            newGeneration -> sink.next(newGeneration))))
+            // this flatMap expands each generation to its constituent cells
+            .flatMap(generation -> Flux.fromIterable(generation));
+
+    allGenerations = Flux.concat(primordialGenerationPublisher,futureGenerations);
   }
 
-  public Flux<Cell> createCellsFlux() {
-    return Flux.range(0, Integer.MAX_VALUE)
-        .map(offset -> coordinateSystem.createCoordinates(offset))
-        /*
-         TODO: if/when we parallelize game state generation, we might want to allow
-         some interleaving here via flatMap()
-         */
-        .flatMapSequential(this::nextGenerationFor);
+  public Publisher<Cell> getAllGenerations() {
+    return allGenerations;
   }
 
-  private Mono<Cell> nextGenerationFor(final Coordinates coordinates) {
-    return isAlive(coordinates).map(isAlive -> Cell.create(coordinates, isAlive));
+  private List<Cell> nextGenerationList(
+      final List<Cell> oldGeneration) {
+    return nextGenerationStream(oldGeneration).collect(Collectors.toList());
+  }
+
+  private Stream<Cell> nextGenerationStream(
+      final Collection<Cell> previousGeneration) {
+
+    final int generationSize = coordinateSystem.size();
+    final Cell[] board = new Cell[generationSize];
+    int cellCount = 0;
+
+    for (final Cell cell : previousGeneration) {
+      board[getBoardOffset(cell.coordinates)] = cell;
+      cellCount++;
+    }
+
+    // Flux.buffer() can produce a partial buffer so we have to check the count
+    if (cellCount < generationSize)
+      return Stream.empty();
+    else {
+      // defensive coding here: ensure we filled the board
+      for (final Cell cell : board)
+        assert null != cell;
+
+      return previousGeneration
+          .stream()
+          .map(cell -> nextGenerationCell(cell.coordinates, board));
+    }
+  }
+
+  private Cell nextGenerationCell(
+      final Coordinates coordinates,
+      final Cell[] board) {
+    return Cell.create(
+        coordinateSystem.createCoordinates(
+            coordinates.x,
+            coordinates.y,
+            coordinates.generation + 1),
+        isAlive(coordinates,board));
   }
 
   /**
-   * Calculate liveness for a new cell (state).
+   * Calculate liveness (in next generation) for one cell.
    *
    * @param coordinates is the cell's coordinates
-   * @return true iff cell should be alive in {@param generation}
-   * the {@Boolean} produced by this {@link Mono} will never be {@code null}
+   * @return true iff cell should be alive in next generation
    */
-  Mono<Boolean> isAlive(final Coordinates coordinates) {
+  private Boolean isAlive(
+      final Coordinates coordinates,
+      final Cell[] board) {
 
-    // TODO: take Mono<Coordinates>?
+    final Integer liveNeighborsCount = Stream.of(
+        coordinates.nw(),
+        coordinates.n(),
+        coordinates.ne(),
+        coordinates.w(),
+        coordinates.e(),
+        coordinates.sw(),
+        coordinates.s(),
+        coordinates.se())
+        .map(coordinate -> wasAliveCount(coordinate, board))
+        .reduce(0, Integer::sum);
 
-    final int x = coordinates.x;
-    final int y = coordinates.y;
-    final int generation = coordinates.generation;
+    final boolean wasAlive = wasAlive(coordinates, board);
 
-    final int previousGen = generation - 1;
-
-    return wasAliveCount(coordinateSystem.createCoordinates(x - 1, y + 1, previousGen))
-        .mergeWith(wasAliveCount(coordinateSystem.createCoordinates(x, y + 1, previousGen)))
-        .mergeWith(wasAliveCount(coordinateSystem.createCoordinates(x + 1, y + 1, previousGen)))
-
-        .mergeWith(wasAliveCount(coordinateSystem.createCoordinates(x - 1, y, previousGen)))
-        .mergeWith(wasAliveCount(coordinateSystem.createCoordinates(x + 1, y, previousGen)))
-
-        .mergeWith(wasAliveCount(coordinateSystem.createCoordinates(x - 1, y - 1, previousGen)))
-        .mergeWith(wasAliveCount(coordinateSystem.createCoordinates(x, y - 1, previousGen)))
-        .mergeWith(wasAliveCount(coordinateSystem.createCoordinates(x + 1, y - 1, previousGen)))
-
-        .reduce(0, (a, b) -> a + b)
-
-        .zipWith(wasAlive(coordinateSystem.createCoordinates(x, y, previousGen)))
-
-        .map((t2) -> {
-          final int liveNeighbors = t2.getT1();
-          final boolean wasAlive = t2.getT2();
-
-          if (wasAlive) {
-            if (liveNeighbors < 2) {
-              return false; // underpopulation
-            } else if (liveNeighbors > 3) {
-              return false; // overpopulation
-            } else {
-              return true;  // survival
-            }
-          } else {
-            if (liveNeighbors == 3) {
-              return true;  // reproduction
-            } else {
-              return false; // status quo
-            }
-          }
-        });
+    if (wasAlive) {
+      if (liveNeighborsCount < 2) {
+        return false; // underpopulation
+      } else if (liveNeighborsCount > 3) {
+        return false; // overpopulation
+      } else {
+        return true;  // survival
+      }
+    } else {
+      if (liveNeighborsCount == 3) {
+        return true;  // reproduction
+      } else {
+        return false; // status quo
+      }
+    }
   }
 
-  /**
-   * Convert boolean wasAlive() to integer liveness contribution.
-   *
-   * @return 1 if cell was alive, otherwise return 0.
-   * the {@Integer} produced by this {@link Mono} will never be {@code null}
-   * @param coordinates
-   */
-   private Mono<Integer> wasAliveCount(final Coordinates coordinates) {
-    return wasAlive(coordinates).map(wasAlive -> wasAlive ? 1 : 0);
+  private int wasAliveCount(final Coordinates coordinates, final Cell[] board) {
+    return wasAlive(coordinates,board) ? 1 : 0;
   }
 
-  /**
-   * Assess historical life status of a cell, from the GameState.
-   *
-   * @return the {@Boolean} produced by this {@link Mono} will never be {@code null}
-   * @param coordinates
-   */
-  Mono<Boolean> wasAlive(final Coordinates coordinates) {
-    return gameState.get(coordinates);
+  private boolean wasAlive(final Coordinates coordinates, final Cell[] board) {
+    return board[getBoardOffset(coordinates)].isAlive;
+  }
+
+  private int getBoardOffset(final Coordinates coordinates) {
+    final Coordinates genZeroCoordinate =
+        coordinateSystem.createCoordinates(coordinates.x, coordinates.y, 0);
+    return coordinateSystem.toOffset(genZeroCoordinate) % coordinateSystem.size();
   }
 
 }
