@@ -7,9 +7,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.thoughtpropulsion.reactrode.Cell;
-import com.thoughtpropulsion.reactrode.CoordinateSystem;
-import com.thoughtpropulsion.reactrode.Coordinates;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.SynchronousSink;
@@ -81,36 +78,35 @@ public class GameOfLife {
       final Coordinates coordinates,
       final Cell[] board) {
     return Cell.create(
-        coordinateSystem.createCoordinates(
-            coordinates.x,
-            coordinates.y,
-            coordinates.generation + 1),
+        coordinateSystem.timeShifted(coordinates,coordinates.generation + 1),
         isAlive(coordinates,board));
   }
 
   /**
    * Calculate liveness (in next generation) for one cell.
    *
-   * @param coordinates is the cell's coordinates
+   * @param c is the cell's coordinates
    * @return true iff cell should be alive in next generation
    */
   private Boolean isAlive(
-      final Coordinates coordinates,
+      final Coordinates c,
       final Cell[] board) {
-
+    
+    final CoordinateSystem cs = this.coordinateSystem;
+    
     final Integer liveNeighborsCount = Stream.of(
-        coordinates.nw(),
-        coordinates.n(),
-        coordinates.ne(),
-        coordinates.w(),
-        coordinates.e(),
-        coordinates.sw(),
-        coordinates.s(),
-        coordinates.se())
+        cs.nw(c),
+        cs.n(c),
+        cs.ne(c),
+        cs.w(c),
+        cs.e(c),
+        cs.sw(c),
+        cs.s(c),
+        cs.se(c))
         .map(coordinate -> wasAliveCount(coordinate, board))
         .reduce(0, Integer::sum);
 
-    final boolean wasAlive = wasAlive(coordinates, board);
+    final boolean wasAlive = wasAlive(c, board);
 
     if (wasAlive) {
       if (liveNeighborsCount < 2) {
@@ -139,7 +135,7 @@ public class GameOfLife {
 
   private int getBoardOffset(final Coordinates coordinates) {
     final Coordinates genZeroCoordinate =
-        coordinateSystem.createCoordinates(coordinates.x, coordinates.y, 0);
+        coordinateSystem.timeShifted(coordinates, 0);
     return coordinateSystem.toOffset(genZeroCoordinate) % coordinateSystem.size();
   }
 

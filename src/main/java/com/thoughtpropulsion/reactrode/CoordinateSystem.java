@@ -28,10 +28,6 @@ public class CoordinateSystem {
     return Coordinates.create(Math.floorMod(x,columns), Math.floorMod(y,rows), generation);
   }
 
-  public Coordinates createCoordinates(final int x, final int y) {
-    return createCoordinates(x,y,0);
-  }
-
   public Coordinates createCoordinates(final int offset) {
     final int generationSize = columns * rows;
 
@@ -60,5 +56,50 @@ public class CoordinateSystem {
   public int size() {
     return columns * rows;
   }
+
+  /*
+   Create coordinates at compass points relative to receiver
+   */
+
+  public Coordinates n(final Coordinates c) {
+    return createCoordinates(c.x,c.y+1,c.generation);
+  }
+
+  public Coordinates s(final Coordinates c) {
+    return createCoordinates(c.x,c.y-1,c.generation);
+  }
+
+  public Coordinates e(final Coordinates c) {
+    return createCoordinates(c.x+1,c.y,c.generation);
+  }
+
+  public Coordinates w(final Coordinates c) {
+    return createCoordinates(c.x-1,c.y,c.generation);
+  }
+
+  public Coordinates ne(final Coordinates c) {
+    return createCoordinates(c.x+1,c.y+1,c.generation);
+  }
+
+  public Coordinates se(final Coordinates c) {
+    return createCoordinates(c.x+1,c.y-1,c.generation);
+  }
+
+  public Coordinates sw(final Coordinates c) {
+    return createCoordinates(c.x-1,c.y-1,c.generation);
+  }
+
+  public Coordinates nw(final Coordinates c) {
+    return createCoordinates(c.x-1,c.y+1,c.generation);
+  }
+
+  /*
+   Create coordinates at the same x/y position but time-shifted
+   */
+
+  public Coordinates timeShifted(final Coordinates c, final int generation) {
+    return createCoordinates(c.x,c.y,generation);
+  }
+
 
 }
