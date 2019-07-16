@@ -6,7 +6,8 @@ Model is in place. `GameOfLife` works!
 
 ## TODO
 
-* make Spring Boot RSocket server (and tests natch')
+* fix RSocket client error: "No decoder for java.lang.String"
+* enable zero copy frame decoder in client and server
 * make browser visualization using rsocket-js + d3
 * connect Geode client (recorder) downstream
 * start up from generation stored in Geode 
@@ -17,3 +18,7 @@ Model is in place. `GameOfLife` works!
 ## Questions
 
 1. putting a null reference into a `Flux` (or `Mono`) results in a puzzling "circularity" exception
+
+## Run
+
+`./gradlew -D bootRun `
