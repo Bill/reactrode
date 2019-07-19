@@ -1,4 +1,5 @@
 plugins {
+//    TODO: port to latest milestone
 //    id("org.springframework.boot") version "2.2.0.M4"
     id("org.springframework.boot") version "2.2.0.M3"
     java
@@ -33,7 +34,7 @@ dependencies {
 
     developmentOnly("org.springframework.boot:spring-boot-devtools")
 
-    // RSocket client doesn't work without this dependency
+    // TODO: figure out how to make RSocket client work w/o this dependency
     implementation("org.springframework.boot:spring-boot-starter-webflux")
 
 }
