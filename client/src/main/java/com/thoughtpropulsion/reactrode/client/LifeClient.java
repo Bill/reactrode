@@ -20,10 +20,17 @@ public class LifeClient {
         .retrieveFlux(Cell.class);
   }
 
-  public Publisher<String> aMono() {
+  public Publisher<String> aStringMono() {
     return rSocketRequester
-        .route("aMono")
+        .route("a-string-mono")
         .data("stuff")
         .retrieveMono(String.class);
+  }
+
+  public Publisher<GreetingsResponse> greet(final String name) {
+    return rSocketRequester
+        .route("greet")
+        .data(new GreetingsRequest(name))
+        .retrieveMono(GreetingsResponse.class);
   }
 }

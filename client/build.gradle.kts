@@ -1,5 +1,6 @@
 plugins {
-    id("org.springframework.boot") version "2.2.0.M4"
+//    id("org.springframework.boot") version "2.2.0.M4"
+    id("org.springframework.boot") version "2.2.0.M3"
     java
 }
 
@@ -7,7 +8,7 @@ apply(plugin = "io.spring.dependency-management")
 
 group = "com.thoughtpropulsion"
 version = "0.0.1-SNAPSHOT"
-java.sourceCompatibility = JavaVersion.VERSION_1_8
+java.sourceCompatibility = JavaVersion.VERSION_11
 
 val developmentOnly by configurations.creating
 configurations {
@@ -26,6 +27,15 @@ dependencies {
 
     implementation("org.springframework.boot:spring-boot-starter")
     implementation("org.springframework.boot:spring-boot-starter-rsocket")
+
+    implementation( "org.projectlombok:lombok")
+    annotationProcessor( "org.projectlombok:lombok")
+
+    developmentOnly("org.springframework.boot:spring-boot-devtools")
+
+    // RSocket client doesn't work without this dependency
+    implementation("org.springframework.boot:spring-boot-starter-webflux")
+
 }
 
 tasks.withType<Test> {

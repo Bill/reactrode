@@ -1,5 +1,6 @@
 plugins {
-    id("org.springframework.boot") version "2.2.0.M4"
+    //    id("org.springframework.boot") version "2.2.0.M4"
+    id("org.springframework.boot") version "2.2.0.M3"
     java
 }
 
@@ -18,6 +19,9 @@ dependencies {
     implementation("io.projectreactor:reactor-core")
 
     implementation("io.vavr:vavr:0.9.2")
+
+    implementation( "org.projectlombok:lombok")
+    annotationProcessor( "org.projectlombok:lombok")
 
     testImplementation("org.junit.jupiter:junit-jupiter:5.4.2")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.4.2")

@@ -1,5 +1,7 @@
 package com.thoughtpropulsion.reactrode.server;
 
+import java.time.Instant;
+
 import com.thoughtpropulsion.reactrode.model.Cell;
 import org.reactivestreams.Publisher;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -22,8 +24,15 @@ public class LifeServer {
     return Flux.from(allGenerations);
   }
 
-  @MessageMapping("aMono")
-  public Mono<String> aMono(final String ignored) {
+  @MessageMapping("a-string-mono")
+  public Mono<String> aStringMono(final String ignored) {
     return Mono.just("howdy!");
   }
+
+  @MessageMapping("greet")
+  Mono<GreetingsResponse> greet(final GreetingsRequest request) {
+    return Mono.just(
+        new GreetingsResponse("Hello " + request.getName() + " @ " + Instant.now()));
+  }
+
 }

@@ -21,24 +21,36 @@ public class LifeClientConfiguration {
 
   @Bean
   public RSocket rSocket() {
-    return RSocketFactory
-        .connect()
-        .mimeType(
-            COMPOSITE_METADATA.toString(),
-            MimeTypeUtils.APPLICATION_JSON_VALUE) // payload MIME type
+//    return RSocketFactory
+//        .connect()
+//        .mimeType(
+//            COMPOSITE_METADATA.toString(),
+//            MimeTypeUtils.TEXT_PLAIN_VALUE) // payload MIME type
+//        .frameDecoder(PayloadDecoder.ZERO_COPY)
+//        // TODO: DRY from application.properties
+//        .transport(TcpClientTransport.create(7000))
+//        .start()
+//        .block();
+
+    return RSocketFactory.connect()
+        .dataMimeType(MimeTypeUtils.APPLICATION_JSON_VALUE)
         .frameDecoder(PayloadDecoder.ZERO_COPY)
-        // TODO: DRY from application.properties
         .transport(TcpClientTransport.create(7000))
         .start()
         .block();
+
   }
 
   @Bean
   RSocketRequester rSocketRequester(RSocketStrategies rSocketStrategies) {
+//    return RSocketRequester.wrap(
+//        rSocket(),
+//        MimeTypeUtils.TEXT_PLAIN, // payload MIME type
+//        COMPOSITE_METADATA,
+//        rSocketStrategies);
     return RSocketRequester.wrap(
         rSocket(),
-        MimeTypeUtils.APPLICATION_JSON, // payload MIME type
-        COMPOSITE_METADATA,
+        MimeTypeUtils.APPLICATION_JSON,
         rSocketStrategies);
   }
 

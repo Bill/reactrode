@@ -1,5 +1,6 @@
 plugins {
-    id("org.springframework.boot") version "2.2.0.M4"
+//        id("org.springframework.boot") version "2.2.0.M4"
+    id("org.springframework.boot") version "2.2.0.M3"
     java
 }
 
@@ -27,6 +28,9 @@ dependencies {
 
     implementation("org.springframework.boot:spring-boot-starter-rsocket")
     developmentOnly("org.springframework.boot:spring-boot-devtools")
+
+    implementation( "org.projectlombok:lombok")
+    annotationProcessor( "org.projectlombok:lombok")
 }
 
 tasks.withType<Test> {

@@ -8,10 +8,11 @@ public class Application {
 
   public static void main(String[] args) {
     new SpringApplicationBuilder()
-        .main(Application.class)
+//        .main(Application.class)
         .sources(Application.class)
         .properties("spring.rsocket.server.port=7000")
-        .profiles("server")
+        .properties("spring.main.lazy-initialization=true")
+//        .profiles("server")
         .run(args);
   }
 }
