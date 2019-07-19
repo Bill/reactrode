@@ -1,12 +1,10 @@
 package com.thoughtpropulsion.reactrode.client;
 
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.annotation.Bean;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 @SpringBootApplication
 public class Application {
@@ -19,13 +17,11 @@ public class Application {
 
   public static void main(String[] args) {
 
-//    SpringApplication.run(Application.class, args);
-
     new SpringApplicationBuilder()
-//        .main(Application.class)
+        .main(Application.class)
         .sources(Application.class)
         .properties("spring.devtools.livereload.enabled=false")
-//        .profiles("client")
+        .profiles("client")
         .run(args);
   }
 
@@ -33,9 +29,7 @@ public class Application {
   public ApplicationRunner getRunner() throws Exception {
     return args -> {
       System.out.println("ran!");
-      Mono.from(lifeClient.greet("you there?"))
-          .subscribe(response -> System.out.println("GreetingsResponse received: " + response));
-//      Flux.from(lifeClient.greetStream("you there?")).take(5).subscribe(resp -> System.out.println("got: " + resp));
+      // TODO: figure out why this flux never terminates (app hangs)
       Flux.from(lifeClient.allGenerations()).take(5).subscribe(cell -> System.out.println("got: " + cell));
     };
   }

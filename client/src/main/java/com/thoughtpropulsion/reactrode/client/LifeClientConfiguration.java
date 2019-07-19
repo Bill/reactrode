@@ -15,7 +15,7 @@ import org.springframework.util.MimeTypeUtils;
 public class LifeClientConfiguration {
 
 
-  // TODO: this is defined in DefaultRSocketRequester---figure out right way to wrap()
+  // TODO: this is defined in DefaultRSocketRequester---figure out right way to wrap() in M4
   private static final MimeType ROUTING = new MimeType("message", "x.rsocket.routing.v0");
   private static final MimeType COMPOSITE_METADATA = new MimeType("message", "x.rsocket.composite-metadata.v0");
 

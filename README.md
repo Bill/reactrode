@@ -6,11 +6,10 @@ Model is in place. `GameOfLife` works!
 
 ## TODO
 
-* fix RSocket client error: "No decoder for java.lang.String"
-* enable zero copy frame decoder in client and server
 * make browser visualization using rsocket-js + d3
 * connect Geode client (recorder) downstream
 * start up from generation stored in Geode 
+* upgrade to latest Spring Boot (2.2.0.M4)
 * &hellip; profit!
 * enable BlockHound https://github.com/reactor/BlockHound
 * side project: figure out how to make `Mono<Cell> put(final Mono<Cell> cellMono)` work analogously to its Flux counterpart
