@@ -24,6 +24,11 @@ public class Coordinates implements Comparable<Coordinates> {
     return new Coordinates(x,y,generation);
   }
 
+  // don't call this. It's here to make RSocket serialization via Jackson work
+  private Coordinates() {
+    this(0,0,0);
+  }
+
   private Coordinates(final int x, final int y, final int generation) {
     this.x = x; this.y = y; this.generation = generation;
   }

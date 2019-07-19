@@ -35,7 +35,8 @@ public class Application {
       System.out.println("ran!");
       Mono.from(lifeClient.greet("you there?"))
           .subscribe(response -> System.out.println("GreetingsResponse received: " + response));
-//      Flux.from(lifeClient.allGenerations()).take(20).subscribe(cell -> System.out.println("got: " + cell));
+//      Flux.from(lifeClient.greetStream("you there?")).take(5).subscribe(resp -> System.out.println("got: " + resp));
+      Flux.from(lifeClient.allGenerations()).take(5).subscribe(cell -> System.out.println("got: " + cell));
     };
   }
 

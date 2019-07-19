@@ -1,6 +1,8 @@
 package com.thoughtpropulsion.reactrode.server;
 
+import java.time.Duration;
 import java.time.Instant;
+import java.util.stream.Stream;
 
 import com.thoughtpropulsion.reactrode.model.Cell;
 import org.reactivestreams.Publisher;
@@ -20,7 +22,7 @@ public class LifeServer {
 
   @MessageMapping("allGenerations")
   // TODO: see if I can return Publisher<Cell> instead
-  public Flux<Cell> allGenerations(final String _ignored) {
+  public Flux<Cell> allGenerations(final GreetingsRequest _ignored) {
     return Flux.from(allGenerations);
   }
 
@@ -33,6 +35,13 @@ public class LifeServer {
   Mono<GreetingsResponse> greet(final GreetingsRequest request) {
     return Mono.just(
         new GreetingsResponse("Hello " + request.getName() + " @ " + Instant.now()));
+  }
+
+  @MessageMapping("greet-stream")
+  Flux<GreetingsResponse> greetStream(GreetingsRequest request) {
+    return Flux.fromStream(Stream.generate(
+        () -> new GreetingsResponse("Hello " + request.getName() + " @ " + Instant.now())
+    )).delayElements(Duration.ofSeconds(1));
   }
 
 }

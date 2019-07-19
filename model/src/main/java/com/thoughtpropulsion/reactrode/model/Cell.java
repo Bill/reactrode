@@ -13,6 +13,11 @@ public class Cell {
     return new Cell(coordinates,isAlive);
   }
 
+  // don't call this. It's here to make RSocket serialization via Jackson work
+  private Cell() {
+    this(null,false);
+  }
+
   private Cell(final Coordinates coordinates, final boolean isAlive) {
     this.coordinates = coordinates; this.isAlive = isAlive;
   }

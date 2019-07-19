@@ -1,16 +1,11 @@
 package com.thoughtpropulsion.reactrode.server;
 
-import java.io.Serializable;
-
-class GreetingsResponse implements Serializable {
-  private String name;
+class GreetingsResponse {
+  private final String name;
   public GreetingsResponse() {
     name = null;
   }
   public GreetingsResponse(final String name) {
-    this.name = name;
-  }
-  public void setName(final String name) {
     this.name = name;
   }
   public String getName() {

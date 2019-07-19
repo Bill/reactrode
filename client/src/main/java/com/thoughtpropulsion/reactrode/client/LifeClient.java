@@ -4,6 +4,7 @@ import com.thoughtpropulsion.reactrode.model.Cell;
 import org.reactivestreams.Publisher;
 import org.springframework.messaging.rsocket.RSocketRequester;
 import org.springframework.stereotype.Component;
+import org.springframework.web.bind.annotation.PathVariable;
 
 @Component
 public class LifeClient {
@@ -16,7 +17,7 @@ public class LifeClient {
   public Publisher<Cell> allGenerations() {
     return rSocketRequester
         .route("allGenerations")
-        .data("ignore me")
+        .data(new GreetingsRequest("ignore me"))
         .retrieveFlux(Cell.class);
   }
 
@@ -33,4 +34,12 @@ public class LifeClient {
         .data(new GreetingsRequest(name))
         .retrieveMono(GreetingsResponse.class);
   }
+
+  public Publisher<GreetingsResponse> greetStream(@PathVariable String name) {
+    return rSocketRequester
+        .route("greet-stream")
+        .data(new GreetingsRequest(name))
+        .retrieveFlux(GreetingsResponse.class);
+  }
+
 }
