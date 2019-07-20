@@ -1,11 +1,48 @@
-<!DOCTYPE HTML>
-<html>
+<!--
+    Parts of this file are derived from Luca Sbardella's Gist:
+
+    https://gist.github.com/lsbardel/c0edf5f88ca5af118599844b7d2dcdf8
+
+    That code is licensed under the 3-Clause BSD License:
+
+    https://opensource.org/licenses/BSD-3-Clause
+-->
+<!DOCTYPE html>
+<html lang="en">
 <head>
-    <title>Conway's Game of Life</title>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta charset="utf-8">
+    <title>Game of Life</title>
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <script src="https://unpkg.com/d3-canvas-transition@0.3.7/build/d3-canvas-transition.js"></script>
+    <style>
+      #panel {
+          background-color: rgba(245,245,245,0.8);
+          padding: 5px;
+          position: absolute;
+          display: block;
+      }
+    </style>
 </head>
 <body>
-<p>The Body</p>
-<script src="/game-of-life-viewer.js"></script>
+<div id="panel">
+    <div id="paper">
+        <label>
+            <input id='svg' name="type" type="radio" checked>
+            <span>svg</span>
+        </label>
+        <label>
+            <input id='canvas' name="type" type="radio">
+            <span>canvas</span>
+        </label>
+    </div>
+    <label>Patterns</label>
+    <select>
+        <option value="gosper">Gosper</option>
+        <option value="beacon">Beacon</option>
+        <option value="pulsar">Pulsar</option>
+    </select>
+    <button>Randomise</button>
+</div>
+<div id="example" style="max-width: 960px"></div>
+<script src="./game-of-life-viewer.js"></script>
 </body>
-</html>
