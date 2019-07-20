@@ -1,6 +1,5 @@
 plugins {
-    //    TODO: port to latest milestone
-    //    id("org.springframework.boot") version "2.2.0.M4"
+    //        id("org.springframework.boot") version "2.2.0.M4"
     id("org.springframework.boot") version "2.2.0.M3"
     java
 }
@@ -11,20 +10,24 @@ group = "com.thoughtpropulsion"
 version = "0.0.1-SNAPSHOT"
 java.sourceCompatibility = JavaVersion.VERSION_1_8
 
+val developmentOnly by configurations.creating
+configurations {
+    runtimeClasspath {
+        extendsFrom(developmentOnly)
+    }
+}
+
 repositories {
     mavenCentral()
+//    maven { url = uri("https://repo.spring.io/snapshot") }
     maven { url = uri("https://repo.spring.io/milestone") }
 }
 
 dependencies {
-    implementation("io.projectreactor:reactor-core")
+    implementation(project(":model"))
 
-    implementation("io.vavr:vavr:0.9.2")
-    
-    testImplementation("org.junit.jupiter:junit-jupiter:5.4.2")
-    testImplementation("org.junit.jupiter:junit-jupiter-params:5.4.2")
-    testImplementation("org.assertj:assertj-core:3.11.1")
-    testImplementation("io.projectreactor:reactor-test")
+    implementation("org.springframework.boot:spring-boot-starter-web")
+    developmentOnly("org.springframework.boot:spring-boot-devtools")
 }
 
 tasks.withType<Test> {
@@ -37,3 +40,5 @@ tasks.withType<Test> {
 tasks.withType<Wrapper> {
     gradleVersion = "5.5"
 }
+
+springBoot {mainClassName = "com.thoughtpropulsion.reactrode.webapp.Application"}

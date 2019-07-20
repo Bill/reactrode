@@ -1,5 +1,5 @@
 rootProject.name = "reactrode"
-include("client","server","model")
+include("client","server","model","webapp")
 
 pluginManagement {
     repositories {

@@ -29,9 +29,6 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter")
     implementation("org.springframework.boot:spring-boot-starter-rsocket")
 
-    implementation( "org.projectlombok:lombok")
-    annotationProcessor( "org.projectlombok:lombok")
-
     developmentOnly("org.springframework.boot:spring-boot-devtools")
 
     // TODO: figure out how to make RSocket client work w/o this dependency
@@ -50,4 +47,4 @@ tasks.withType<Wrapper> {
     gradleVersion = "5.5"
 }
 
-springBoot {mainClassName = "com.thoughtpropulsion.reactrode.Application"}
+springBoot {mainClassName = "com.thoughtpropulsion.reactrode.client.Application"}

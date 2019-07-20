@@ -28,9 +28,6 @@ dependencies {
 
     implementation("org.springframework.boot:spring-boot-starter-rsocket")
     developmentOnly("org.springframework.boot:spring-boot-devtools")
-
-    implementation( "org.projectlombok:lombok")
-    annotationProcessor( "org.projectlombok:lombok")
 }
 
 tasks.withType<Test> {
@@ -44,4 +41,4 @@ tasks.withType<Wrapper> {
     gradleVersion = "5.5"
 }
 
-springBoot {mainClassName = "com.thoughtpropulsion.reactrode.Application"}
+springBoot {mainClassName = "com.thoughtpropulsion.reactrode.server.Application"}
