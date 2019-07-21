@@ -16,9 +16,15 @@ public class Patterns {
     final Collection<Cell> cells = new ArrayList<>(columns * rows);
     for (int y = 0; y < rows; y++) {
       for (int x = 0; x < columns; x++) {
-        cells.add(Cell.create(
-            coordinateSystem.createCoordinates(x, y, generation),
-            bits.get(y * columns + x)));
+        final Boolean isAlive = bits.get(y * columns + x);
+        final Cell newCell;
+        if (isAlive)
+          newCell = Cell.createAlive(
+            coordinateSystem.createCoordinates(x, y, generation), true);
+        else
+          newCell = Cell.createDead(
+              coordinateSystem.createCoordinates(x, y, generation));
+        cells.add(newCell);
       }
     }
     return cells;

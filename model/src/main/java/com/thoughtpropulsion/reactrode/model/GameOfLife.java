@@ -74,21 +74,13 @@ public class GameOfLife {
     }
   }
 
-  private Cell nextGenerationCell(
-      final Coordinates coordinates,
-      final Cell[] board) {
-    return Cell.create(
-        coordinateSystem.timeShifted(coordinates,coordinates.generation + 1),
-        isAlive(coordinates,board));
-  }
-
   /**
-   * Calculate liveness (in next generation) for one cell.
+   * Calculate one cell's successor.
    *
    * @param c is the cell's coordinates
-   * @return true iff cell should be alive in next generation
+   * @return the cell's successor
    */
-  private Boolean isAlive(
+  private Cell nextGenerationCell(
       final Coordinates c,
       final Cell[] board) {
     
@@ -106,21 +98,23 @@ public class GameOfLife {
         .map(coordinate -> wasAliveCount(coordinate, board))
         .reduce(0, Integer::sum);
 
+    final Coordinates newCoordinates = cs.timeShifted(c, c.generation + 1);
+
     final boolean wasAlive = wasAlive(c, board);
 
     if (wasAlive) {
       if (liveNeighborsCount < 2) {
-        return false; // underpopulation
+        return Cell.createDead(newCoordinates); // underpopulation
       } else if (liveNeighborsCount > 3) {
-        return false; // overpopulation
+        return Cell.createDead(newCoordinates); // overpopulation
       } else {
-        return true;  // survival
+        return Cell.createAlive(newCoordinates,false); // survival
       }
     } else {
       if (liveNeighborsCount == 3) {
-        return true;  // reproduction
+        return Cell.createAlive(newCoordinates,true); // reproduction
       } else {
-        return false; // status quo
+        return Cell.createDead(newCoordinates); // status quo
       }
     }
   }

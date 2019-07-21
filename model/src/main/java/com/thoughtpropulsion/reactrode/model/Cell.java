@@ -8,18 +8,27 @@ import java.util.Objects;
 public class Cell {
   public final Coordinates coordinates;
   public final boolean isAlive;
+  public final boolean isNewborn; // if isAlive, is this cell newborn?
 
-  public static Cell create(final Coordinates coordinates, final boolean isAlive) {
-    return new Cell(coordinates,isAlive);
+
+  public static Cell createDead(final Coordinates coordinates) {
+    return new Cell(coordinates,false,false);
+  }
+
+  public static Cell createAlive(final Coordinates coordinates,
+                                 final boolean isNewborn) {
+    return new Cell(coordinates,true, isNewborn);
   }
 
   // don't call this. It's here to make RSocket serialization via Jackson work
   private Cell() {
-    this(null,false);
+    this(null,false, false);
   }
 
-  private Cell(final Coordinates coordinates, final boolean isAlive) {
-    this.coordinates = coordinates; this.isAlive = isAlive;
+  private Cell(final Coordinates coordinates, final boolean isAlive, final boolean isNewborn) {
+    this.coordinates = coordinates;
+    this.isAlive = isAlive;
+    this.isNewborn = isNewborn;
   }
 
   @Override
