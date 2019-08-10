@@ -16,7 +16,7 @@ public class LifeServer {
     this.allGenerations = allGenerations;
   }
 
-  @MessageMapping("allGenerations")
+  @MessageMapping("all-generations")
   // TODO: see if I can return Publisher<Cell> instead
   public Flux<Cell> allGenerations(final Coordinates _ignored) {
     return Flux.from(allGenerations);

@@ -4,6 +4,7 @@ import io.rsocket.RSocket;
 import io.rsocket.RSocketFactory;
 import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.transport.netty.client.TcpClientTransport;
+import io.rsocket.transport.netty.client.WebsocketClientTransport;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.rsocket.RSocketRequester;
@@ -35,10 +36,10 @@ public class LifeClientConfiguration {
     return RSocketFactory.connect()
         .dataMimeType(MimeTypeUtils.APPLICATION_JSON_VALUE)
         .frameDecoder(PayloadDecoder.ZERO_COPY)
-        .transport(TcpClientTransport.create(7000))
+//        .transport(TcpClientTransport.create(7000))
+        .transport(WebsocketClientTransport.create(51852))
         .start()
         .block();
-
   }
 
   @Bean

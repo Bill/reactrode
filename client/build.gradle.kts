@@ -31,7 +31,7 @@ dependencies {
 
     developmentOnly("org.springframework.boot:spring-boot-devtools")
 
-    // TODO: figure out how to make RSocket client work w/o this dependency
+    // TODO: without this dependency, this RSocket TCP client crashes the server
     implementation("org.springframework.boot:spring-boot-starter-webflux")
 
 }
