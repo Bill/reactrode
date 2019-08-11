@@ -30,7 +30,7 @@ public class Application {
     return args -> {
       System.out.println("ran!");
       // TODO: figure out why this flux never terminates (app hangs)
-      Flux.from(lifeClient.allGenerations()).take(5).subscribe(cell -> System.out.println("got: " + cell));
+      Flux.from(lifeClient.allGenerations()).take(400*400).subscribe(cell -> System.out.println("got: " + cell));
     };
   }
 

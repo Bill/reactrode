@@ -3,7 +3,6 @@ import {
     JsonSerializer, IdentitySerializer, BufferEncoders,
 } from 'rsocket-core';
 import RSocketWebSocketClient from 'rsocket-websocket-client';
-import RSocketTcpClient from 'rsocket-tcp-client'
 
 // Create an instance of a client
 const client = new RSocketClient(
@@ -29,8 +28,11 @@ const client = new RSocketClient(
 //            BufferEncoders,
 //        ),
 
-          transport: new RSocketWebSocketClient({url: 'ws://localhost:62722'})
+          transport: new RSocketWebSocketClient({url: 'ws://localhost:50979'})
     });
+
+// module.exports.client = client
+export default client
 
 // const socket = await client.connect();
 
@@ -41,27 +43,3 @@ const client = new RSocketClient(
 //   onSubscribe: cancel => {alert('got subscription!')}
 // });
 
-console.log("HERE!")
-
-// Open the connection
-client.connect().subscribe(
-    {
-        onComplete: socket => {
-            socket.requestStream({
-                                     data: {},
-                                     metadata: 'all-generations'
-                                 })
-                .subscribe(
-                    {
-                        onComplete: () => console.log('all-generations done'),
-                        onError: error => console.error(error),
-                        onNext: value => console.log(value),
-                        // Nothing happens until `request(n)` is called
-                        onSubscribe: sub => sub.request(4),
-                    }
-                )
-        },
-        onError: error => console.error(error),
-        onSubscribe: cancel => {/* call cancel() to abort */
-        }
-    });

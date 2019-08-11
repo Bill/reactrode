@@ -1,3 +1,5 @@
+import rSocketClient from './rsocket-stuff'
+
 var gridHeight = 400;
 var gridWidth = 400;
 var theGrid = createArray(gridWidth);
@@ -6,16 +8,40 @@ var c = document.getElementById("myCanvas");
 var ctx = c.getContext("2d");
 ctx.fillStyle = "#FF0000";
 
-fillRandom(); //create the starting state for the grid by filling it with random cells
+// fillRandom(); //create the starting state for the grid by filling it with random cells
 
+console.log("HERE!")
+
+// Open the connection
+rSocketClient.connect().subscribe(
+    {
+        onComplete: socket => {
+            socket.requestStream({
+                                     data: {},
+                                     metadata: 'all-generations'
+                                 })
+                .subscribe(
+                    {
+                        onComplete: () => console.log('all-generations done'),
+                        onError: error => console.error(error),
+                        onNext: value => console.log(value),
+                        // Nothing happens until `request(n)` is called
+                        onSubscribe: sub => sub.request(5),
+                    }
+                )
+        },
+        onError: error => console.error(error),
+        onSubscribe: cancel => {/* call cancel() to abort */
+        }
+    });
 tick(); //call main loop
 
 //functions
 function tick() { //main loop
-    console.time("loop");
+    // console.time("loop");
+    calculateGridRemotely();
     drawGrid();
-    updateGrid();
-    console.timeEnd("loop");
+    // console.timeEnd("loop");
     requestAnimationFrame(tick);
 }
 
@@ -47,10 +73,18 @@ function drawGrid() { //draw the contents of the grid onto a canvas
             }
         }
     }
-    console.log(liveCount/100);
+    // console.log(liveCount/100);
 }
 
-function updateGrid() { //perform one iteration of grid update
+function calculateGridRemotely() {
+    for (var col = 0; col < gridWidth; col++) { //iterate through columns
+        for (var row = 0; row < gridHeight; row++) { //iterate through rows
+
+        }
+    }
+}
+
+function calculateGridLocally() { //perform one iteration of grid update
 
     for (var j = 1; j < gridHeight - 1; j++) { //iterate through rows
         for (var k = 1; k < gridWidth - 1; k++) { //iterate through columns

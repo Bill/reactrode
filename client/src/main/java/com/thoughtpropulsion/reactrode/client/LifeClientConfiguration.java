@@ -37,7 +37,7 @@ public class LifeClientConfiguration {
         .dataMimeType(MimeTypeUtils.APPLICATION_JSON_VALUE)
         .frameDecoder(PayloadDecoder.ZERO_COPY)
 //        .transport(TcpClientTransport.create(7000))
-        .transport(WebsocketClientTransport.create(51852))
+        .transport(WebsocketClientTransport.create(50979))
         .start()
         .block();
   }
