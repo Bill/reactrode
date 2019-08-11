@@ -8,9 +8,7 @@
     "react-scripts": "3.0.1",
     "rsocket-core": "0.0.10",
     "rsocket-tcp-client": "0.0.10",
-    "rsocket-websocket-client": "0.0.10",
-    "d3": ">=4.13 <5",
-    "d3-canvas-transition": "0.3.7"
+    "rsocket-websocket-client": "0.0.10"
   },
   "scripts": {
     "start": "react-scripts start",
