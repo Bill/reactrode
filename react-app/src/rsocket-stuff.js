@@ -23,11 +23,13 @@ const client = new RSocketClient(
 
         // Transports default to sending/receiving strings:
         // Use BufferEncoders to enable binary
-        transport: new RSocketTcpClient(
-            {host: '127.0.0.1', port: 7000}, // options to Node.js net.connect()
-            BufferEncoders,
-        ),
 
+//        transport: new RSocketTcpClient(
+//            {host: '127.0.0.1', port: 7000}, // options to Node.js net.connect()
+//            BufferEncoders,
+//        ),
+
+          transport: new RSocketWebSocketClient({url: 'ws://localhost:62722'})
     });
 
 // const socket = await client.connect();
