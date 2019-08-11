@@ -19,7 +19,15 @@
       work correctly both with client-side routing and a non-root public URL.
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
-    <title>React App</title>
+    <title>Reactrode</title>
+    <style>
+      #panel {
+        background-color: rgba(245,245,245,0.8);
+        padding: 5px;
+        position: absolute;
+        display: block;
+      }
+    </style>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
@@ -34,5 +42,27 @@
       To begin the development, run `npm start` or `yarn start`.
       To create a production bundle, use `npm run build` or `yarn build`.
     -->
+
+    <div id="panel">
+      <div id="paper">
+        <label>
+          <input id='svg' name="type" type="radio" checked>
+          <span>svg</span>
+        </label>
+        <label>
+          <input id='canvas' name="type" type="radio">
+          <span>canvas</span>
+        </label>
+      </div>
+      <label>Patterns</label>
+      <select>
+        <option value="gosper">Gosper</option>
+        <option value="beacon">Beacon</option>
+        <option value="pulsar">Pulsar</option>
+      </select>
+      <button>Randomise</button>
+    </div>
+    <div id="example" style="max-width: 960px"></div>
+
   </body>
 </html>
