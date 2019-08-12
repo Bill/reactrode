@@ -55,7 +55,7 @@ if (calculateLocally) {
                             },
                             // Nothing happens until `request(n)` is called
                             onSubscribe: sub => {
-                                console.log("onSubscribe() requesting ")
+                                console.log(`onSubscribe() requesting ${FRAME_SIZE}`)
                                 subscription = sub;
                                 requested = FRAME_SIZE;
                                 subscription.request(requested);
