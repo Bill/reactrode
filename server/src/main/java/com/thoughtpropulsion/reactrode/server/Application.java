@@ -9,10 +9,7 @@ public class Application {
   public static void main(String[] args) {
     new SpringApplicationBuilder()
         .sources(Application.class)
-        .properties("spring.rsocket.server.transport=WEBSOCKET")
-        .properties("spring.rsocket.server.port=7000")
-        .properties("spring.main.lazy-initialization=true")
-//        .profiles("server")
+        .profiles("server")
         .run(args);
   }
 }

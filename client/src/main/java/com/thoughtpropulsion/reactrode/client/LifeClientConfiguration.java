@@ -1,9 +1,10 @@
 package com.thoughtpropulsion.reactrode.client;
 
+import java.net.URI;
+
 import io.rsocket.RSocket;
 import io.rsocket.RSocketFactory;
 import io.rsocket.frame.decoder.PayloadDecoder;
-import io.rsocket.transport.netty.client.TcpClientTransport;
 import io.rsocket.transport.netty.client.WebsocketClientTransport;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -37,7 +38,7 @@ public class LifeClientConfiguration {
         .dataMimeType(MimeTypeUtils.APPLICATION_JSON_VALUE)
         .frameDecoder(PayloadDecoder.ZERO_COPY)
 //        .transport(TcpClientTransport.create(7000))
-        .transport(WebsocketClientTransport.create(50979))
+        .transport(WebsocketClientTransport.create(URI.create("ws://localhost:7000/rsocket")))
         .start()
         .block();
   }

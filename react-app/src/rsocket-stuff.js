@@ -28,7 +28,7 @@ const client = new RSocketClient(
 //            BufferEncoders,
 //        ),
 
-          transport: new RSocketWebSocketClient({url: 'ws://localhost:50979'})
+          transport: new RSocketWebSocketClient({url: 'ws://localhost:7000/rsocket'})
     });
 
 // module.exports.client = client

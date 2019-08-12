@@ -27,7 +27,7 @@ if (calculateLocally) {
             onComplete: socket => {
                 socket.requestStream({
                                          data: {},
-                                         metadata: 'all-generations'
+                                         metadata: '/rsocket/all-generations'
                                      })
                     .subscribe(
                         {

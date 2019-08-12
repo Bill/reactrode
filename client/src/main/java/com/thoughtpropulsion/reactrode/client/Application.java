@@ -20,7 +20,6 @@ public class Application {
     new SpringApplicationBuilder()
         .main(Application.class)
         .sources(Application.class)
-        .properties("spring.devtools.livereload.enabled=false")
         .profiles("client")
         .run(args);
   }

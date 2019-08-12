@@ -16,7 +16,7 @@ public class LifeClient {
 
   public Publisher<Cell> allGenerations() {
     return rSocketRequester
-        .route("all-generations")
+        .route("/rsocket/all-generations")
         /*
          TODO: figure out how to retrieve a flux providing no parameters at all
          TODO: figure out why, if I have to provide a parameter, I can't send a String

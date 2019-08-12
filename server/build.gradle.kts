@@ -27,6 +27,8 @@ dependencies {
     implementation(project(":model"))
 
     implementation("org.springframework.boot:spring-boot-starter-rsocket")
+//    webflux is needed to cause rsocket/websocket to bind to a well-known port
+    implementation("org.springframework.boot:spring-boot-starter-webflux")
     developmentOnly("org.springframework.boot:spring-boot-devtools")
 }
 
