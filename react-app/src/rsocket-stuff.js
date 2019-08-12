@@ -12,8 +12,8 @@ const client = new RSocketClient(
         },
         setup: {
             dataMimeType: 'application/json',
-            keepAlive: 40000,
-            lifetime: 100000,
+            keepAlive: 30000,
+            lifetime: 180000,
             metadataMimeType: 'message/x.rsocket.routing.v0',
         },
 
