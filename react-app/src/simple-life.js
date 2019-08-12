@@ -1,14 +1,15 @@
 import rSocketClient from './rsocket-stuff'
 
-var gridHeight = 400;
-var gridWidth = 400;
-var theGrid = createArray(gridWidth);
-var mirrorGrid = createArray(gridWidth);
-var c = document.getElementById("myCanvas");
-var ctx = c.getContext("2d");
-ctx.fillStyle = "#FF0000";
+const gridHeight = 400;
+const gridWidth = 400;
+const canvas = document.getElementById("myCanvas");
+const context = canvas.getContext("2d");
+context.fillStyle = "#FF0000";
 const calculateLocally = false;
 
+// These are non-const so they are swappable
+var theGrid = createArray(gridWidth);
+var mirrorGrid = createArray(gridWidth);
 
 if (calculateLocally) {
     fillRandom(); //create the starting state for the grid by filling it with random cells
@@ -21,10 +22,15 @@ if (calculateLocally) {
     }
     tick(); //call main loop
 } else {
-// Open the connection
+    
+    const FRAME_SIZE = gridHeight * gridWidth;
+    var subscription; // to support re-requesting
+    var requested = 0;
+    
     rSocketClient.connect().subscribe(
         {
             onComplete: socket => {
+
                 socket.requestStream({
                                          data: {},
                                          metadata: '/rsocket/all-generations'
@@ -41,9 +47,19 @@ if (calculateLocally) {
                                 } else {
                                     theGrid[y][x] = 0;
                                 }
+                                if(--requested === 0) {
+                                    drawGrid();
+                                    requested = FRAME_SIZE;
+                                    subscription.request(requested);
+                                }
                             },
                             // Nothing happens until `request(n)` is called
-                            onSubscribe: sub => sub.request(400*400),
+                            onSubscribe: sub => {
+                                console.log("onSubscribe() requesting ")
+                                subscription = sub;
+                                requested = FRAME_SIZE;
+                                subscription.request(requested);
+                            },
                         }
                     )
             },
@@ -51,21 +67,6 @@ if (calculateLocally) {
             onSubscribe: cancel => {/* call cancel() to abort */
             }
         });
-
-    function sleep(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
-    async function foo() {
-        console.log("sleeping...")
-        await sleep(4000)
-        console.log("slept!")
-        drawGrid();
-        requestAnimationFrame(foo);
-    }
-
-    foo();
-
 }
 
 
@@ -88,11 +89,11 @@ function fillRandom() { //fill the grid randomly
 
 function drawGrid() { //draw the contents of the grid onto a canvas
     console.log("drawing")
-    ctx.clearRect(0, 0, gridHeight, gridWidth); //this should clear the canvas ahead of each redraw
+    context.clearRect(0, 0, gridHeight, gridWidth); //this should clear the canvas ahead of each redraw
     for (var row = 0; row < gridHeight; row++) { //iterate through rows
         for (var col = 0; col < gridWidth; col++) { //iterate through columns
             if (theGrid[row][col] === 1) {
-                ctx.fillRect(row, col, 1, 1);
+                context.fillRect(row, col, 1, 1);
             }
         }
     }
