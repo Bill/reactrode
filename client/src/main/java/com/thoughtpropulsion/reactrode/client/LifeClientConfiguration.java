@@ -3,6 +3,7 @@ package com.thoughtpropulsion.reactrode.client;
 import static org.springframework.messaging.rsocket.MetadataExtractor.ROUTING;
 
 import java.net.URI;
+import java.time.Duration;
 
 import io.rsocket.RSocket;
 import io.rsocket.RSocketFactory;
@@ -22,6 +23,7 @@ public class LifeClientConfiguration {
   public RSocket rSocket() {
 
     return RSocketFactory.connect()
+        .keepAlive(Duration.ofSeconds(20),Duration.ofSeconds(150),3)
         .mimeType(ROUTING.toString(), MimeTypeUtils.APPLICATION_JSON.toString())
         .frameDecoder(PayloadDecoder.ZERO_COPY)
         .transport(WebsocketClientTransport.create(URI.create("ws://localhost:7000/rsocket")))

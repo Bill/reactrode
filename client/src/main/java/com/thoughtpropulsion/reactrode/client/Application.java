@@ -1,5 +1,7 @@
 package com.thoughtpropulsion.reactrode.client;
 
+import java.util.concurrent.atomic.LongAdder;
+
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
@@ -27,9 +29,27 @@ public class Application {
   @Bean
   public ApplicationRunner getRunner() throws Exception {
     return args -> {
-      System.out.println("ran!");
       // TODO: figure out why this flux never terminates (app hangs)
-      Flux.from(lifeClient.allGenerations()).take(400*400).subscribe(cell -> System.out.println("got: " + cell));
+      final LongAdder liveCount = new LongAdder();
+      final long starting = System.nanoTime();
+      final int demand = 20 * 400 * 400;
+      Flux.from(lifeClient.allGenerations())
+          .take(demand)
+          .doOnNext(
+              cell -> {
+                if (cell.isAlive) {
+                  liveCount.increment();
+                } else {
+                  liveCount.decrement();
+                }
+              })
+          .doFinally(_ignored -> {
+            final long ending = System.nanoTime();
+            final long elapsed = ending - starting;
+            System.out
+                .println(String.format("%d cells with net live count: %s took %d nanoseconds", demand, liveCount, elapsed));
+          })
+          .subscribe();
     };
   }
 
