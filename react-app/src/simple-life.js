@@ -1,7 +1,7 @@
 import rSocketClient from './rsocket-stuff'
 
-const gridHeight = 400;
-const gridWidth = 400;
+const gridHeight = 100;
+const gridWidth = 100;
 const canvas = document.getElementById("myCanvas");
 const context = canvas.getContext("2d");
 context.fillStyle = "#FF0000";
