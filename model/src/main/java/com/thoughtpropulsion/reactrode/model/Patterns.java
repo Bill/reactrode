@@ -1,10 +1,16 @@
 package com.thoughtpropulsion.reactrode.model;
 
+import static com.thoughtpropulsion.reactrode.model.Functional.returning;
+
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Random;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class Patterns {
 
@@ -33,5 +39,18 @@ public class Patterns {
   public static List<Boolean> toPattern(final int... bits) {
     return Arrays.stream(bits).boxed().map(b -> b == 1)
         .collect(Collectors.toList());
+  }
+
+  public static List<Boolean> randomPattern(final int columns, final int rows) {
+    final Random random = createRandom(1L);
+    return Stream.generate(random::nextBoolean).limit(columns * rows).collect(Collectors.toList());
+  }
+
+  public static Random createRandom(final long seed) {
+    try {
+      return returning(SecureRandom.getInstance("SHA1PRNG"), random -> random.setSeed(seed));
+    } catch (NoSuchAlgorithmException e) {
+      throw new RuntimeException(e);
+    }
   }
 }
