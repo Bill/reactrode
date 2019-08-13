@@ -26,11 +26,7 @@ rSocketClient.connect().subscribe(
                         onNext: value => {
                             let row = value.data.coordinates.y;
                             let col = value.data.coordinates.x;
-                            if (value.data.isAlive) {
-                                board[row][col] = 1;
-                            } else {
-                                board[row][col] = 0;
-                            }
+                            board[row][col] = value.data.isAlive;
                             if (--requested === 0) {
                                 draw();
                                 requested = frameSize;
@@ -65,7 +61,7 @@ function draw() {
     context.clearRect(0, 0, width, height);
     for (var col = 0; col < width; ++col) {
         for (var row = 0; row < height; ++row) {
-            if (board[row][col] === 1) {
+            if (board[row][col]) {
                 context.fillRect(col, row, 1, 1);
             }
         }
