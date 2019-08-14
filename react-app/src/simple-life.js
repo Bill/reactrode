@@ -10,6 +10,7 @@ const board = createArray(width);
 
 var subscription; // to support re-requesting
 var requested = 0;
+var frameStartTime = new Date();
 
 rSocketClient.connect().subscribe(
     {
@@ -31,6 +32,7 @@ rSocketClient.connect().subscribe(
                                 draw();
                                 requested = frameSize;
                                 subscription.request(requested);
+                                updateStatistics();
                             }
                         },
                         // Nothing happens until `request(n)` is called
@@ -48,6 +50,19 @@ rSocketClient.connect().subscribe(
         }
     });
 
+function updateStatistics() {
+    const frameEndTime = new Date();
+    const elapsedMillis = frameEndTime - frameStartTime;
+    const framesPerSecond = (1/elapsedMillis)*1000;
+    const cellsPerSecond = framesPerSecond * frameSize;
+    renderStatistics(framesPerSecond,cellsPerSecond);
+    frameStartTime = new Date();
+}
+
+function renderStatistics(framesPerSecond, cellsPerSecond) {
+    document.getElementById('frames-per-second').innerHTML = framesPerSecond.toFixed(1);
+    document.getElementById('cells-per-second').innerHTML = cellsPerSecond.toFixed(0);
+}
 
 function createArray(rows) {
     const array = [];

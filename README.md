@@ -6,6 +6,7 @@ Model is in place. `GameOfLife` works!
 
 ## TODO
 
+* figure out how to increase from 40K to 250K Cells/second
 * connect Geode client (recorder) downstream
 * start up from generation stored in Geode 
 * &hellip; profit!

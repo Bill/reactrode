@@ -1,8 +1,6 @@
 import React from 'react';
 import logo from './logo.svg';
 import './App.css';
-// import './rsocket-stuff.js'
-// import './game-of-life-viewer.js'
 import './simple-life'
 
 function App() {

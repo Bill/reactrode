@@ -1,17 +1,16 @@
-package com.thoughtpropulsion.reactrode.client;
+package com.thoughtpropulsion.reactrode.recorder;
 
 import com.thoughtpropulsion.reactrode.model.Cell;
 import com.thoughtpropulsion.reactrode.model.Coordinates;
-import com.thoughtpropulsion.reactrode.model.Empty;
 import org.reactivestreams.Publisher;
 import org.springframework.messaging.rsocket.RSocketRequester;
 import org.springframework.stereotype.Component;
 
 @Component
-public class LifeClient {
+public class RecordingSubscriber {
   private final RSocketRequester rSocketRequester;
 
-  public LifeClient(final RSocketRequester rSocketRequester) {
+  public RecordingSubscriber(final RSocketRequester rSocketRequester) {
     this.rSocketRequester = rSocketRequester;
   }
 
@@ -24,13 +23,6 @@ public class LifeClient {
          */
         .data(Coordinates.create(0,0,0))
         .retrieveFlux(Cell.class);
-  }
-
-  public Publisher<Empty> empties() {
-    return rSocketRequester
-        .route("/rsocket/empties")
-        .data(Empty.create())
-        .retrieveFlux(Empty.class);
   }
 
 }

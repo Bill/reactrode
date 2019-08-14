@@ -7,7 +7,7 @@ apply(plugin = "io.spring.dependency-management")
 
 group = "com.thoughtpropulsion"
 version = "0.0.1-SNAPSHOT"
-java.sourceCompatibility = JavaVersion.VERSION_11
+java.sourceCompatibility = JavaVersion.VERSION_1_8
 
 val developmentOnly by configurations.creating
 configurations {
@@ -18,19 +18,17 @@ configurations {
 
 repositories {
     mavenCentral()
+//    maven { url = uri("https://repo.spring.io/snapshot") }
     maven { url = uri("https://repo.spring.io/milestone") }
 }
 
 dependencies {
     implementation(project(":model"))
 
-    implementation("org.springframework.boot:spring-boot-starter")
     implementation("org.springframework.boot:spring-boot-starter-rsocket")
-
-    developmentOnly("org.springframework.boot:spring-boot-devtools")
-
-    // TODO: without this dependency, this RSocket TCP client crashes the server
+//    webflux is needed to cause rsocket/websocket to bind to a well-known port
     implementation("org.springframework.boot:spring-boot-starter-webflux")
+    developmentOnly("org.springframework.boot:spring-boot-devtools")
 }
 
 tasks.withType<Test> {
@@ -44,4 +42,4 @@ tasks.withType<Wrapper> {
     gradleVersion = "5.5"
 }
 
-springBoot {mainClassName = "com.thoughtpropulsion.reactrode.client.Application"}
+springBoot {mainClassName = "com.thoughtpropulsion.reactrode.recorder.Application"}
