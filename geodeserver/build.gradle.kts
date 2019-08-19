@@ -25,10 +25,6 @@ repositories {
 dependencies {
     implementation(project(":model"))
 
-    implementation("org.springframework.boot:spring-boot-starter-rsocket")
-
-//    webflux is needed to cause rsocket/websocket to bind to a well-known port
-    implementation("org.springframework.boot:spring-boot-starter-webflux")
 
     implementation("org.springframework.geode:spring-geode-starter:1.1.0.RC2")
 
@@ -38,7 +34,6 @@ dependencies {
     testImplementation("org.assertj:assertj-core:3.11.1")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testImplementation("io.projectreactor:reactor-test")
     testImplementation("org.springframework.data:spring-data-geode-test:0.0.7.RELEASE")
 
     developmentOnly("org.springframework.boot:spring-boot-devtools")
@@ -55,7 +50,7 @@ tasks.withType<Wrapper> {
     gradleVersion = "5.5"
 }
 
-springBoot {mainClassName = "com.thoughtpropulsion.reactrode.recorder.Application"}
+springBoot {mainClassName = "com.thoughtpropulsion.reactrode.geodeserver.GeodeApplication"}
 
 configurations.all  {
 // TODO: remove this exclusion once we are using Geode 1.10

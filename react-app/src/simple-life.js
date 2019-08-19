@@ -24,15 +24,15 @@ rSocketClient.connect().subscribe(
                     {
                         onComplete: () => console.log('all-generations done'),
                         onError: error => console.error(error),
-                        onNext: value => {
-                            let row = value.data.coordinates.y;
-                            let col = value.data.coordinates.x;
-                            board[row][col] = value.data.isAlive;
+                        onNext: cell => {
+                            let row = cell.data.coordinates.y;
+                            let col = cell.data.coordinates.x;
+                            board[row][col] = cell.data.isAlive;
                             if (--requested === 0) {
                                 draw();
                                 requested = frameSize;
                                 subscription.request(requested);
-                                updateStatistics();
+                                updateStatistics(cell.data.coordinates.generation);
                             }
                         },
                         // Nothing happens until `request(n)` is called
@@ -50,16 +50,17 @@ rSocketClient.connect().subscribe(
         }
     });
 
-function updateStatistics() {
+function updateStatistics(generation) {
     const frameEndTime = new Date();
     const elapsedMillis = frameEndTime - frameStartTime;
     const framesPerSecond = (1/elapsedMillis)*1000;
     const cellsPerSecond = framesPerSecond * frameSize;
-    renderStatistics(framesPerSecond,cellsPerSecond);
+    renderStatistics(generation,framesPerSecond,cellsPerSecond);
     frameStartTime = new Date();
 }
 
-function renderStatistics(framesPerSecond, cellsPerSecond) {
+function renderStatistics(generation,framesPerSecond, cellsPerSecond) {
+    document.getElementById('generation').innerHTML = generation;
     document.getElementById('frames-per-second').innerHTML = framesPerSecond.toFixed(1);
     document.getElementById('cells-per-second').innerHTML = cellsPerSecond.toFixed(0);
 }

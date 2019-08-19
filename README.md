@@ -12,6 +12,7 @@ Model is in place. `GameOfLife` works!
 * &hellip; profit!
 * enable BlockHound https://github.com/reactor/BlockHound
 * side project: figure out how to make `Mono<Cell> put(final Mono<Cell> cellMono)` work analogously to its Flux counterpart
+* remove dependency on org.springframework.data:spring-data-commons in model module (necessary to make spring-data-geode serialization work)
 * ~~make server serve websocket (not tcp)~~
 * ~~make server listen on a well-known port (not an ephemeral one!)~~
 * ~~make browser visualiation render first frame~~
@@ -26,4 +27,15 @@ Model is in place. `GameOfLife` works!
 
 ## Run
 
-`./gradlew -D bootRun `
+After starting these in IntelliJ:
+
+GeodeServerApplication `-Xmx1g -Xms1g -Xss144k`
+GameServerApplication
+RecorderApplication
+
+use gfsh:
+
+```
+connect --locator=localhost[10334]
+describe region --name=Cells
+```

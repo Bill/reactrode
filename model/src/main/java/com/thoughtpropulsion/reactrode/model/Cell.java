@@ -2,6 +2,8 @@ package com.thoughtpropulsion.reactrode.model;
 
 import java.util.Objects;
 
+import org.springframework.data.annotation.PersistenceConstructor;
+
 /**
  * A single cell in Conway's Game of Life.
  */
@@ -12,20 +14,22 @@ public class Cell {
 
 
   public static Cell createDead(final Coordinates coordinates) {
-    return new Cell(coordinates,false,false);
+    return new Cell(coordinates, false, false);
   }
 
   public static Cell createAlive(final Coordinates coordinates,
                                  final boolean isNewborn) {
-    return new Cell(coordinates,true, isNewborn);
+    return new Cell(coordinates, true, isNewborn);
   }
 
   // don't call this. It's here to make RSocket serialization via Jackson work
   private Cell() {
-    this(null,false, false);
+    this(null, false, false);
   }
 
-  private Cell(final Coordinates coordinates, final boolean isAlive, final boolean isNewborn) {
+  // this annotation is here to make spring-data-geode deserialization work
+  @PersistenceConstructor
+  public Cell(final Coordinates coordinates, final boolean isAlive, final boolean isNewborn) {
     this.coordinates = coordinates;
     this.isAlive = isAlive;
     this.isNewborn = isNewborn;

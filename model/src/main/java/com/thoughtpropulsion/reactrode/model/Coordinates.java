@@ -3,6 +3,8 @@ package com.thoughtpropulsion.reactrode.model;
 import java.util.Comparator;
 import java.util.Objects;
 
+import org.springframework.data.annotation.PersistenceConstructor;
+
 /**
  * These are coordinates for a cell in Conway's Game of Life. Since we're modeling the game in an
  * immutable "event sourcing" style, the coordinates includes the generation, a time coordinates.
@@ -25,11 +27,14 @@ public class Coordinates implements Comparable<Coordinates> {
   }
 
   // don't call this. It's here to make RSocket serialization via Jackson work
+  // But it's incompatible w/ spring-data-geode deserialization so it's commented out?!?
   private Coordinates() {
     this(0,0,0);
   }
 
-  private Coordinates(final int x, final int y, final int generation) {
+  // this annotation is here to make spring-data-geode deserialization work
+  @PersistenceConstructor
+  public Coordinates(final int x, final int y, final int generation) {
     this.x = x; this.y = y; this.generation = generation;
   }
 
