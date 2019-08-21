@@ -17,6 +17,7 @@ import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.gemfire.GemfireTemplate;
 import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Schedulers;
 import reactor.util.function.Tuple2;
 
 import org.apache.geode.cache.GemFireCache;
@@ -69,7 +70,9 @@ public class RecorderApplication {
       final long starting = System.nanoTime();
       final int demand = 20000;
       Flux.from(recordingSubscriber.allGenerations())
+          .subscribeOn(Schedulers.elastic())
           .limitRequest(demand)
+          .parallel(2,1024)
           .doOnNext(
               cell -> {
                 if (cell.isAlive) {
@@ -77,38 +80,40 @@ public class RecorderApplication {
                 } else {
                   liveCount.decrement();
                 }
-//                try {
-//                  cellGemFireTemplate.put(coordinateSystem.toOffset(cell.coordinates), cell);
-//                } catch (final Exception e) {
-//                  System.out.println("for cell" + cell);
-//                  e.printStackTrace();
-//                  throw e;
-//                }
-              })
-          .buffer(1000)
-          .doOnNext(
-              cells -> {
                 try {
-                  final Map<Long, Cell> entries = cells.stream().map(cell -> {
-                    final long key = coordinateSystem.toOffset(cell.coordinates);
-                    return new Pair<>(key, cell);
-                  }).collect(Collectors.toMap(pair -> pair.k, pair -> pair.v));
-
-                  cellGemFireTemplate.putAll(entries);
+                  cellGemFireTemplate.put(coordinateSystem.toOffset(cell.coordinates), cell);
                 } catch (final Exception e) {
+                  System.out.println("for cell" + cell);
                   e.printStackTrace();
                   throw e;
                 }
-              }
-          )
-          .doFinally(_ignored -> {
+              })
+//          .buffer(1000)
+//          .doOnNext(
+//              cells -> {
+//                try {
+//                  final Map<Long, Cell> entries = cells.stream().map(cell -> {
+//                    final long key = coordinateSystem.toOffset(cell.coordinates);
+//                    return new Pair<>(key, cell);
+//                  }).collect(Collectors.toMap(pair -> pair.k, pair -> pair.v));
+//
+//                  cellGemFireTemplate.putAll(entries);
+//                } catch (final Exception e) {
+//                  e.printStackTrace();
+//                  throw e;
+//                }
+//              }
+//          )
+          .doOnTerminate(() -> {
             final long ending = System.nanoTime();
             final long elapsed = ending - starting;
             System.out
                 .println(String.format("%d cells with net live count: %s took %d nanoseconds", demand, liveCount, elapsed));
           })
-          .blockLast();
-//          .subscribe();
+//          .blockLast();
+          .subscribe();
+
+      Thread.sleep(10000);
     };
 
   }

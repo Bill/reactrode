@@ -1,11 +1,6 @@
 plugins {
-    //    TODO: port to latest milestone
-    //    id("org.springframework.boot") version "2.2.0.M4"
-    id("org.springframework.boot") version "2.2.0.M3"
-    java
+    `java-library`
 }
-
-apply(plugin = "io.spring.dependency-management")
 
 group = "com.thoughtpropulsion"
 version = "0.0.1-SNAPSHOT"
@@ -17,7 +12,7 @@ repositories {
 }
 
 dependencies {
-    implementation("io.projectreactor:reactor-core")
+    implementation("io.projectreactor:reactor-core:3.2.0.RELEASE")
 
     implementation("io.vavr:vavr:0.9.2")
 
@@ -28,7 +23,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter:5.4.2")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.4.2")
     testImplementation("org.assertj:assertj-core:3.11.1")
-    testImplementation("io.projectreactor:reactor-test")
+    testImplementation("io.projectreactor:reactor-test:3.2.0.RELEASE")
 
     testImplementation("com.fasterxml.jackson.core:jackson-databind:2.9.8")
 }
@@ -41,5 +36,5 @@ tasks.withType<Test> {
 }
 
 tasks.withType<Wrapper> {
-    gradleVersion = "5.5"
+    gradleVersion = "5.6"
 }

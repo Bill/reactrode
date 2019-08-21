@@ -1,5 +1,5 @@
 rootProject.name = "reactrode"
-include("gameserver","geodeserver","model","recorder","testclient","webapp")
+include("model","gameserver","geodeserver","recorder","testclient","webapp")
 
 pluginManagement {
     repositories {
@@ -13,4 +13,5 @@ pluginManagement {
             }
         }
     }
+
 }

@@ -1,5 +1,5 @@
 plugins {
-    id("org.springframework.boot") version "2.2.0.M5"
+    id("org.springframework.boot")
     java
 }
 
@@ -41,7 +41,7 @@ tasks.withType<Test> {
 }
 
 tasks.withType<Wrapper> {
-    gradleVersion = "5.5"
+    gradleVersion = "5.6"
 }
 
 springBoot {mainClassName = "com.thoughtpropulsion.reactrode.client.Application"}
