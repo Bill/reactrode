@@ -1,7 +1,6 @@
 package com.thoughtpropulsion.reactrode.recorder;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
@@ -65,7 +64,7 @@ public class RecorderApplication {
 
     final Publisher<Cell> source = recordingSubscriber.allGenerations();
 
-    return createParallelPutRunner(cellGemFireTemplate, coordinateSystem, source);
+    return createParallelBulkPutRunner(cellGemFireTemplate, coordinateSystem, source, 8192, 4);
   }
 
   private ApplicationRunner createSerialPutRunner(final CellGemFireTemplate cellGemFireTemplate,
@@ -87,35 +86,29 @@ public class RecorderApplication {
 
   private ApplicationRunner createParallelPutRunner(final CellGemFireTemplate cellGemFireTemplate,
                                                     final CoordinateSystem coordinateSystem,
-                                                    final Publisher<Cell> source) {
+                                                    final Publisher<Cell> source,
+                                                    final int parallelism) {
     return args -> {
-//      System.out.println("cache: "+cache.isClosed());
-//      final Cell cell = Cell.createAlive(coordinateSystem.createCoordinates(0,0,-1), true);
-//      final int key = coordinateSystem.toOffset(cell.coordinates);
-//      cellGemFireTemplate.put(key, cell);
-//      final Object got = cellGemFireTemplate.get(key);
-//      System.out.println("got: " + got);
-
       final LongAdder n = new LongAdder();
       final long starting = System.nanoTime();
       final AtomicLong firstElementReceived = new AtomicLong();
       final int demand = 2_000_000;
       Flux.from(source)
           .limitRequest(demand)
-          .parallel(4)
+          .parallel(parallelism)
           .runOn(Schedulers.elastic())
           .doOnNext(
               getSingleCellConsumer(cellGemFireTemplate, coordinateSystem, n, firstElementReceived))
           .doOnTerminate(summarizePerformance(n, starting, firstElementReceived))
-          .subscribe();
-
-      Thread.sleep(120_000); // TODO: find a better way to keep app alive until flux is done
+          .sequential()
+          .blockLast();
     };
   }
 
   private ApplicationRunner createSerialBulkPutRunner(final CellGemFireTemplate cellGemFireTemplate,
-                                                  final CoordinateSystem coordinateSystem,
-                                                  final Publisher<Cell> source) {
+                                                      final CoordinateSystem coordinateSystem,
+                                                      final Publisher<Cell> source,
+                                                      final int batchSize) {
     return args -> {
       final LongAdder n = new LongAdder();
       final long starting = System.nanoTime();
@@ -123,11 +116,34 @@ public class RecorderApplication {
       final int demand = 200000;
       Flux.from(source)
           .limitRequest(demand)
-          .buffer(8192)
+          .buffer(batchSize)
           .doOnNext(
-              getBulkCellConsumer(cellGemFireTemplate, coordinateSystem, n, firstElementReceived)
-          )
+              getBulkCellConsumer(cellGemFireTemplate, coordinateSystem, n, firstElementReceived))
           .doOnTerminate(summarizePerformance(n, starting, firstElementReceived))
+          .blockLast();
+    };
+  }
+
+  private ApplicationRunner createParallelBulkPutRunner(
+      final CellGemFireTemplate cellGemFireTemplate,
+      final CoordinateSystem coordinateSystem,
+      final Publisher<Cell> source,
+      final int batchSize,
+      final int parallelism) {
+    return args -> {
+      final LongAdder n = new LongAdder();
+      final long starting = System.nanoTime();
+      final AtomicLong firstElementReceived = new AtomicLong();
+      final int demand = 2_000_000;
+      Flux.from(source)
+          .limitRequest(demand)
+          .buffer(batchSize)
+          .parallel(parallelism)
+          .runOn(Schedulers.elastic())
+          .doOnNext(
+              getBulkCellConsumer(cellGemFireTemplate, coordinateSystem, n, firstElementReceived))
+          .doOnTerminate(summarizePerformance(n, starting, firstElementReceived))
+          .sequential()
           .blockLast();
     };
   }
