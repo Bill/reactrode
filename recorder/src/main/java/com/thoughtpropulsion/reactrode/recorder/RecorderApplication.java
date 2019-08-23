@@ -1,8 +1,11 @@
 package com.thoughtpropulsion.reactrode.recorder;
 
-import java.io.Console;
+import java.util.Collection;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import com.thoughtpropulsion.reactrode.model.Cell;
@@ -10,20 +13,22 @@ import com.thoughtpropulsion.reactrode.model.CoordinateSystem;
 import com.thoughtpropulsion.reactrode.recorder.config.RecordingConfiguration;
 import com.thoughtpropulsion.reactrode.recorder.gemfireTemplate.CellGemFireTemplate;
 import com.thoughtpropulsion.reactrode.recorder.subscriber.RecordingSubscriber;
+import org.reactivestreams.Publisher;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
-import org.springframework.data.gemfire.GemfireTemplate;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
-import reactor.util.function.Tuple2;
 
 import org.apache.geode.cache.GemFireCache;
 
 @SpringBootApplication(scanBasePackageClasses = RecordingConfiguration.class)
 public class RecorderApplication {
+
+  private static volatile ConfigurableApplicationContext applicationContext;
 
   final RecordingSubscriber recordingSubscriber;
 
@@ -32,7 +37,7 @@ public class RecorderApplication {
   }
 
   public static void main(String[] args) {
-    new SpringApplicationBuilder()
+    applicationContext = new SpringApplicationBuilder()
         .sources(RecorderApplication.class)
         .web(WebApplicationType.NONE)
         .run(args);
@@ -57,6 +62,32 @@ public class RecorderApplication {
       final CellGemFireTemplate cellGemFireTemplate,
       final CoordinateSystem coordinateSystem,
       GemFireCache cache) throws Exception {
+
+    final Publisher<Cell> source = recordingSubscriber.allGenerations();
+
+    return createParallelPutRunner(cellGemFireTemplate, coordinateSystem, source);
+  }
+
+  private ApplicationRunner createSerialPutRunner(final CellGemFireTemplate cellGemFireTemplate,
+                                                  final CoordinateSystem coordinateSystem,
+                                                  final Publisher<Cell> source) {
+    return args -> {
+      final LongAdder n = new LongAdder();
+      final long starting = System.nanoTime();
+      final AtomicLong firstElementReceived = new AtomicLong();
+      final int demand = 200000;
+      Flux.from(source)
+          .limitRequest(demand)
+          .doOnNext(
+              getSingleCellConsumer(cellGemFireTemplate, coordinateSystem, n, firstElementReceived))
+          .doOnTerminate(summarizePerformance(n, starting, firstElementReceived))
+          .blockLast();
+    };
+  }
+
+  private ApplicationRunner createParallelPutRunner(final CellGemFireTemplate cellGemFireTemplate,
+                                                    final CoordinateSystem coordinateSystem,
+                                                    final Publisher<Cell> source) {
     return args -> {
 //      System.out.println("cache: "+cache.isClosed());
 //      final Cell cell = Cell.createAlive(coordinateSystem.createCoordinates(0,0,-1), true);
@@ -65,57 +96,95 @@ public class RecorderApplication {
 //      final Object got = cellGemFireTemplate.get(key);
 //      System.out.println("got: " + got);
 
-      // TODO: figure out why this flux never terminates (app hangs)
-      final LongAdder liveCount = new LongAdder();
+      final LongAdder n = new LongAdder();
       final long starting = System.nanoTime();
-      final int demand = 20000;
-      Flux.from(recordingSubscriber.allGenerations())
-          .subscribeOn(Schedulers.elastic())
+      final AtomicLong firstElementReceived = new AtomicLong();
+      final int demand = 2_000_000;
+      Flux.from(source)
           .limitRequest(demand)
-          .parallel(2,1024)
+          .parallel(4)
+          .runOn(Schedulers.elastic())
           .doOnNext(
-              cell -> {
-                if (cell.isAlive) {
-                  liveCount.increment();
-                } else {
-                  liveCount.decrement();
-                }
-                try {
-                  cellGemFireTemplate.put(coordinateSystem.toOffset(cell.coordinates), cell);
-                } catch (final Exception e) {
-                  System.out.println("for cell" + cell);
-                  e.printStackTrace();
-                  throw e;
-                }
-              })
-//          .buffer(1000)
-//          .doOnNext(
-//              cells -> {
-//                try {
-//                  final Map<Long, Cell> entries = cells.stream().map(cell -> {
-//                    final long key = coordinateSystem.toOffset(cell.coordinates);
-//                    return new Pair<>(key, cell);
-//                  }).collect(Collectors.toMap(pair -> pair.k, pair -> pair.v));
-//
-//                  cellGemFireTemplate.putAll(entries);
-//                } catch (final Exception e) {
-//                  e.printStackTrace();
-//                  throw e;
-//                }
-//              }
-//          )
-          .doOnTerminate(() -> {
-            final long ending = System.nanoTime();
-            final long elapsed = ending - starting;
-            System.out
-                .println(String.format("%d cells with net live count: %s took %d nanoseconds", demand, liveCount, elapsed));
-          })
-//          .blockLast();
+              getSingleCellConsumer(cellGemFireTemplate, coordinateSystem, n, firstElementReceived))
+          .doOnTerminate(summarizePerformance(n, starting, firstElementReceived))
           .subscribe();
 
-      Thread.sleep(10000);
+      Thread.sleep(120_000); // TODO: find a better way to keep app alive until flux is done
     };
+  }
 
+  private ApplicationRunner createSerialBulkPutRunner(final CellGemFireTemplate cellGemFireTemplate,
+                                                  final CoordinateSystem coordinateSystem,
+                                                  final Publisher<Cell> source) {
+    return args -> {
+      final LongAdder n = new LongAdder();
+      final long starting = System.nanoTime();
+      final AtomicLong firstElementReceived = new AtomicLong();
+      final int demand = 200000;
+      Flux.from(source)
+          .limitRequest(demand)
+          .buffer(8192)
+          .doOnNext(
+              getBulkCellConsumer(cellGemFireTemplate, coordinateSystem, n, firstElementReceived)
+          )
+          .doOnTerminate(summarizePerformance(n, starting, firstElementReceived))
+          .blockLast();
+    };
+  }
+
+  private Consumer<Cell> getSingleCellConsumer(final CellGemFireTemplate cellGemFireTemplate,
+                                               final CoordinateSystem coordinateSystem,
+                                               final LongAdder n,
+                                               final AtomicLong firstElementReceived) {
+    return cell -> {
+      if (firstElementReceived.get() == 0) {
+        firstElementReceived.set(System.nanoTime());
+      }
+      n.increment();
+      try {
+        cellGemFireTemplate.put(coordinateSystem.toOffset(cell.coordinates), cell);
+      } catch (final Exception e) {
+        System.out.println("for cell" + cell);
+        e.printStackTrace();
+        throw e;
+      }
+    };
+  }
+
+  private Runnable summarizePerformance(final LongAdder n, final long starting,
+                                        final AtomicLong firstElementReceived) {
+    return () -> {
+      final long ending = System.nanoTime();
+      final long waitForFirstElement = firstElementReceived.get() - starting;
+      final long totalElapsed = ending - starting;
+      System.out
+          .println(String.format("waited %.2f seconds for first element\naveraged %.0f %s elements per second",
+              waitForFirstElement / 1_000_000_000.0,
+              n.longValue() * 1.0 / totalElapsed * 1_000_000_000,
+              "Cell"));
+//      applicationContext.close();
+    };
+  }
+
+  private Consumer<Collection<Cell>> getBulkCellConsumer(final CellGemFireTemplate cellGemFireTemplate,
+                                                         final CoordinateSystem coordinateSystem,
+                                                         final LongAdder n,
+                                                         final AtomicLong firstElementReceived) {
+    return cells -> {
+      if (firstElementReceived.get() == 0)
+        firstElementReceived.set(System.nanoTime());
+      try {
+        final Map<Long, Cell> entries = cells.stream().map(cell -> {
+          final long key = coordinateSystem.toOffset(cell.coordinates);
+          return new Pair<>(key, cell);
+        }).collect(Collectors.toMap(pair -> pair.k, pair -> pair.v));
+        n.add(entries.size());
+        cellGemFireTemplate.putAll(entries);
+      } catch (final Exception e) {
+        e.printStackTrace();
+        throw e;
+      }
+    };
   }
 
 }

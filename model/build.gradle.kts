@@ -12,7 +12,7 @@ repositories {
 }
 
 dependencies {
-    implementation("io.projectreactor:reactor-core:3.2.0.RELEASE")
+    implementation("io.projectreactor:reactor-core:3.2.11.RELEASE")
 
     implementation("io.vavr:vavr:0.9.2")
 
@@ -23,7 +23,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter:5.4.2")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.4.2")
     testImplementation("org.assertj:assertj-core:3.11.1")
-    testImplementation("io.projectreactor:reactor-test:3.2.0.RELEASE")
+    testImplementation("io.projectreactor:reactor-test:3.2.11.RELEASE")
 
     testImplementation("com.fasterxml.jackson.core:jackson-databind:2.9.8")
 }

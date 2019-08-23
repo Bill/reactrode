@@ -18,6 +18,7 @@ public class GeodeConfiguration {
     ClientRegionFactoryBean<Long, Cell> cellRegionFactoryBean = new ClientRegionFactoryBean<>();
     cellRegionFactoryBean.setCache(gemfireCache);
     cellRegionFactoryBean.setName("Cells");
+//    cellRegionFactoryBean.setShortcut(ClientRegionShortcut.LOCAL);
     cellRegionFactoryBean.setShortcut(ClientRegionShortcut.PROXY);
     return cellRegionFactoryBean;
   }
