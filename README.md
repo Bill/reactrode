@@ -2,13 +2,18 @@ This is a [Conway's Game of Life](https://en.wikipedia.org/wiki/Conway%27s_Game_
 
 ## Status
 
-Model is in place. `GameOfLife` works!
+Gameserver produces `allGenerations` flux which can be consumed by:
+
+* browser-based, JavaScript react-app
+* Java-based testclient app
+* Java-based recorder app, which feeds geodeserver Geode server
 
 ## TODO
 
-* figure out how to increase from 40K to 250K Cells/second
-* connect Geode client (recorder) downstream
+
+* drive Geode to LowMemoryException (w/ eviction, critical thresholds configured)
 * start up from generation stored in Geode 
+* feed browsers from Geode CQ-based Flux
 * &hellip; profit!
 * enable BlockHound https://github.com/reactor/BlockHound
 * side project: figure out how to make `Mono<Cell> put(final Mono<Cell> cellMono)` work analogously to its Flux counterpart
@@ -18,6 +23,9 @@ Model is in place. `GameOfLife` works!
 * ~~make browser visualiation render first frame~~
 * ~~make browser visualization render multiple frames~~
 * ~~upgrade to latest Spring Boot (2.2.0.M5 as of 8/6/2019)~~
+* ~~connect Geode client (recorder) downstream~~
+* ~~cursory performance tuning~~
+* ~~drive Geode to OOM error~~
 
 ## Questions
 

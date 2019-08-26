@@ -11,6 +11,7 @@ import org.springframework.data.gemfire.config.annotation.EnableLocator;
 import org.springframework.data.gemfire.config.annotation.EnableManager;
 import org.springframework.data.gemfire.repository.config.EnableGemfireRepositories;
 
+import org.apache.geode.cache.EvictionAttributes;
 import org.apache.geode.cache.GemFireCache;
 
 @Configuration
@@ -22,12 +23,16 @@ import org.apache.geode.cache.GemFireCache;
 public class GeodeConfiguration {
 
   @Bean("Cells")
-  ReplicatedRegionFactoryBean<Long, Cell> getCellRegion(GemFireCache gemFireCache) {
+  ReplicatedRegionFactoryBean<Long, Cell> getCellRegion(
+      final GemFireCache gemFireCache) {
     final ReplicatedRegionFactoryBean<Long, Cell>
         regionFactoryBean =
         new ReplicatedRegionFactoryBean<>();
     regionFactoryBean.setName("Cells");
     regionFactoryBean.setCache(gemFireCache);
+    regionFactoryBean.setEvictionAttributes(
+        EvictionAttributes.createLRUMemoryAttributes(50)
+    );
     return regionFactoryBean;
   }
 }

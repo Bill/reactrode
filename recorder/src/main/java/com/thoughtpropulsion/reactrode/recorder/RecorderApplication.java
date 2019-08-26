@@ -27,6 +27,9 @@ import org.apache.geode.cache.GemFireCache;
 @SpringBootApplication(scanBasePackageClasses = RecordingConfiguration.class)
 public class RecorderApplication {
 
+  private static final int BATCH_SIZE = 8192;
+  private static final int PARALLELISM = 4;
+  private static final int LIMIT_REQUEST = 3_000_000;
   private static volatile ConfigurableApplicationContext applicationContext;
 
   final RecordingSubscriber recordingSubscriber;
@@ -36,6 +39,9 @@ public class RecorderApplication {
   }
 
   public static void main(String[] args) {
+
+    Schedulers.enableMetrics();
+
     applicationContext = new SpringApplicationBuilder()
         .sources(RecorderApplication.class)
         .web(WebApplicationType.NONE)
@@ -64,7 +70,8 @@ public class RecorderApplication {
 
     final Publisher<Cell> source = recordingSubscriber.allGenerations();
 
-    return createParallelBulkPutRunner(cellGemFireTemplate, coordinateSystem, source, 8192, 4);
+    return createParallelBulkPutRunner(cellGemFireTemplate, coordinateSystem, source, BATCH_SIZE,
+        PARALLELISM);
   }
 
   private ApplicationRunner createSerialPutRunner(final CellGemFireTemplate cellGemFireTemplate,
@@ -74,9 +81,8 @@ public class RecorderApplication {
       final LongAdder n = new LongAdder();
       final long starting = System.nanoTime();
       final AtomicLong firstElementReceived = new AtomicLong();
-      final int demand = 200000;
       Flux.from(source)
-          .limitRequest(demand)
+          .limitRequest(LIMIT_REQUEST)
           .doOnNext(
               getSingleCellConsumer(cellGemFireTemplate, coordinateSystem, n, firstElementReceived))
           .doOnTerminate(summarizePerformance(n, starting, firstElementReceived))
@@ -92,9 +98,8 @@ public class RecorderApplication {
       final LongAdder n = new LongAdder();
       final long starting = System.nanoTime();
       final AtomicLong firstElementReceived = new AtomicLong();
-      final int demand = 2_000_000;
       Flux.from(source)
-          .limitRequest(demand)
+          .limitRequest(LIMIT_REQUEST)
           .parallel(parallelism)
           .runOn(Schedulers.elastic())
           .doOnNext(
@@ -113,9 +118,8 @@ public class RecorderApplication {
       final LongAdder n = new LongAdder();
       final long starting = System.nanoTime();
       final AtomicLong firstElementReceived = new AtomicLong();
-      final int demand = 200000;
       Flux.from(source)
-          .limitRequest(demand)
+          .limitRequest(LIMIT_REQUEST)
           .buffer(batchSize)
           .doOnNext(
               getBulkCellConsumer(cellGemFireTemplate, coordinateSystem, n, firstElementReceived))
@@ -134,9 +138,10 @@ public class RecorderApplication {
       final LongAdder n = new LongAdder();
       final long starting = System.nanoTime();
       final AtomicLong firstElementReceived = new AtomicLong();
-      final int demand = 2_000_000;
       Flux.from(source)
-          .limitRequest(demand)
+          .name("parallel bulk put processor")
+          .metrics()
+          .limitRequest(LIMIT_REQUEST)
           .buffer(batchSize)
           .parallel(parallelism)
           .runOn(Schedulers.elastic())
@@ -167,21 +172,6 @@ public class RecorderApplication {
     };
   }
 
-  private Runnable summarizePerformance(final LongAdder n, final long starting,
-                                        final AtomicLong firstElementReceived) {
-    return () -> {
-      final long ending = System.nanoTime();
-      final long waitForFirstElement = firstElementReceived.get() - starting;
-      final long totalElapsed = ending - starting;
-      System.out
-          .println(String.format("waited %.2f seconds for first element\naveraged %.0f %s elements per second",
-              waitForFirstElement / 1_000_000_000.0,
-              n.longValue() * 1.0 / totalElapsed * 1_000_000_000,
-              "Cell"));
-//      applicationContext.close();
-    };
-  }
-
   private Consumer<Collection<Cell>> getBulkCellConsumer(final CellGemFireTemplate cellGemFireTemplate,
                                                          final CoordinateSystem coordinateSystem,
                                                          final LongAdder n,
@@ -200,6 +190,21 @@ public class RecorderApplication {
         e.printStackTrace();
         throw e;
       }
+    };
+  }
+
+  private Runnable summarizePerformance(final LongAdder n, final long starting,
+                                        final AtomicLong firstElementReceived) {
+    return () -> {
+      final long ending = System.nanoTime();
+      final long waitForFirstElement = firstElementReceived.get() - starting;
+      final long totalElapsed = ending - starting;
+      System.out
+          .println(String.format("waited %.2f seconds for first element\naveraged %.0f %s elements per second",
+              waitForFirstElement / 1_000_000_000.0,
+              n.longValue() * 1.0 / totalElapsed * 1_000_000_000,
+              "Cell"));
+//      applicationContext.close();
     };
   }
 

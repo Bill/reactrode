@@ -32,6 +32,10 @@ dependencies {
 
     implementation("org.springframework.geode:spring-geode-starter:1.1.0.RC2")
 
+//    so we get micrometer so our Project Reactor metrics will be available
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
+    implementation("io.micrometer:micrometer-registry-prometheus")
+    implementation("io.prometheus:simpleclient_pushgateway")
 
     testImplementation("org.junit.jupiter:junit-jupiter:5.4.2")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.4.2")
