@@ -1,5 +1,7 @@
 package com.thoughtpropulsion.reactrode.recorder;
 
+import static com.thoughtpropulsion.reactrode.model.GameOfLife.enforceGenerationFraming;
+
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
@@ -27,7 +29,6 @@ import org.apache.geode.cache.GemFireCache;
 @SpringBootApplication(scanBasePackageClasses = RecordingConfiguration.class)
 public class RecorderApplication {
 
-  private static final int BATCH_SIZE = 8192;
   private static final int PARALLELISM = 4;
   private static final int LIMIT_REQUEST = 3_000_000;
   private static volatile ConfigurableApplicationContext applicationContext;
@@ -67,7 +68,7 @@ public class RecorderApplication {
 
     final Publisher<Cell> source = recordingSubscriber.allGenerations();
 
-    return createParallelBulkPutRunner(cellGemFireTemplate, coordinateSystem, source, BATCH_SIZE,
+    return createParallelBulkPutRunner(cellGemFireTemplate, coordinateSystem, source,
         PARALLELISM);
   }
 
@@ -115,9 +116,13 @@ public class RecorderApplication {
       final LongAdder n = new LongAdder();
       final long starting = System.nanoTime();
       final AtomicLong firstElementReceived = new AtomicLong();
-      Flux.from(source)
-          .limitRequest(LIMIT_REQUEST)
-          .buffer(batchSize)
+
+      enforceGenerationFraming(
+          Flux.from(source)
+              .limitRequest(LIMIT_REQUEST)
+              .buffer(batchSize),
+          coordinateSystem)
+
           .doOnNext(
               getBulkCellConsumer(cellGemFireTemplate, coordinateSystem, n, firstElementReceived))
           .doOnTerminate(summarizePerformance(n, starting, firstElementReceived))
@@ -129,15 +134,18 @@ public class RecorderApplication {
       final CellGemFireTemplate cellGemFireTemplate,
       final CoordinateSystem coordinateSystem,
       final Publisher<Cell> source,
-      final int batchSize,
       final int parallelism) {
     return args -> {
       final LongAdder n = new LongAdder();
       final long starting = System.nanoTime();
       final AtomicLong firstElementReceived = new AtomicLong();
-      Flux.from(source)
-          .limitRequest(LIMIT_REQUEST)
-          .buffer(batchSize)
+
+      enforceGenerationFraming(
+          Flux.from(source)
+              .limitRequest(LIMIT_REQUEST)
+              .buffer(coordinateSystem.size()),
+          coordinateSystem)
+
           .parallel(parallelism)
           .runOn(Schedulers.elastic())
           .doOnNext(

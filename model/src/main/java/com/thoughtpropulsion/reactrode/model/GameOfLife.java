@@ -4,11 +4,16 @@ import static com.thoughtpropulsion.reactrode.model.Functional.returning;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import io.vavr.CheckedFunction1;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.core.publisher.SynchronousSink;
 
 public class GameOfLife {
@@ -23,8 +28,12 @@ public class GameOfLife {
     this.coordinateSystem = coordinateSystem;
 
     final Flux<Cell> futureGenerations =
-        Flux.from(primordialGenerationPublisher)
-            .buffer(coordinateSystem.size())
+
+        enforceGenerationFraming(
+          Flux.from(primordialGenerationPublisher)
+              .buffer(coordinateSystem.size()),
+            coordinateSystem)
+
             // this flatMap converts a single (primordial) generation to many (future) ones
             .flatMap(primordialGeneration ->
                 Flux.generate(
@@ -37,6 +46,56 @@ public class GameOfLife {
             .flatMap(generation -> Flux.fromIterable(generation));
 
     allGenerations = Flux.concat(primordialGenerationPublisher,futureGenerations);
+  }
+
+  /*
+   * It's important that we store exactly one frame/generation at a time. No less. No more!
+   * The GameOfLife is not able to start from a generation that is not exactly the right size.
+   * This function is suitable for use with Flux.transform(). It transforms the flux so that
+   * if we see a buffer (List<Cell>) that is the wrong size, or which has cells from more than
+   * one generation, we generate an error.
+   *
+   * This method is public because, not only is it useful in our own constructor (where it's used
+   * to ensure the primordial generation is valid)---it's also useful in other places e.g.
+   * anywhere we are recording or saving cell data for replay.
+   */
+  public static Flux<List<Cell>> enforceGenerationFraming(
+      final Flux<List<Cell>> flux,
+      final CoordinateSystem coordinateSystem) {
+
+    return flux
+        .concatMap(primordialGeneration -> {
+          if (primordialGeneration.size() == coordinateSystem.size()) {
+            return Mono.just(primordialGeneration);
+          } else {
+            return Mono.error(new IllegalArgumentException(String.format(
+                "Expected generation of size %d but got %d",
+                coordinateSystem.size(),
+                primordialGeneration.size()
+            )));
+          }
+        })
+        .concatMap(primordialGeneration -> {
+          final AtomicReference<Integer> generation = new AtomicReference<>();
+          final Predicate<Cell> isInGeneration =
+              (final Cell cell) -> {
+                if (generation.get() == null) {
+                  generation.set(cell.coordinates.generation);
+                  return true;
+                } else {
+                  return cell.coordinates.generation == generation.get();
+                }
+              };
+          if (primordialGeneration.stream().allMatch(isInGeneration)) {
+            return Mono.just(primordialGeneration);
+          } else {
+            return Mono.error(new IllegalArgumentException(String.format(
+                "Started with generation %d but changed mid-frame: %s",
+                generation.get(),
+                primordialGeneration
+            )));
+          }
+        });
   }
 
   public Publisher<Cell> getAllGenerations() {

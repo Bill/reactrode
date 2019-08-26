@@ -15,7 +15,7 @@ public class PerformanceTest {
   public static final int PRIMORDIAL_GENERATION = -1;
 
   @ParameterizedTest
-  @ValueSource(ints = {0,1,2,3,4,5,6,7,8})
+  @ValueSource(ints = {0,1,2,3,4,5,6,7})
   public void timeToGenerate(final int exponent) {
     final long n = Math.round(Math.pow(10, exponent));
 
