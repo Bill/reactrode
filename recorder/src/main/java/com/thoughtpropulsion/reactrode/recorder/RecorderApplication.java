@@ -39,9 +39,6 @@ public class RecorderApplication {
   }
 
   public static void main(String[] args) {
-
-    Schedulers.enableMetrics();
-
     applicationContext = new SpringApplicationBuilder()
         .sources(RecorderApplication.class)
         .web(WebApplicationType.NONE)
@@ -139,8 +136,6 @@ public class RecorderApplication {
       final long starting = System.nanoTime();
       final AtomicLong firstElementReceived = new AtomicLong();
       Flux.from(source)
-          .name("parallel bulk put processor")
-          .metrics()
           .limitRequest(LIMIT_REQUEST)
           .buffer(batchSize)
           .parallel(parallelism)
