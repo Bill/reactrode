@@ -12,7 +12,8 @@ repositories {
 }
 
 dependencies {
-    implementation("io.projectreactor:reactor-core:3.2.11.RELEASE")
+    implementation("io.projectreactor:reactor-core:3.3.0.M3")
+    implementation("io.projectreactor:reactor-tools:3.3.0.M3")
 
     implementation("io.vavr:vavr:0.9.2")
 

@@ -14,6 +14,7 @@ import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Hooks;
 import reactor.test.StepVerifier;
+import reactor.tools.agent.ReactorDebugAgent;
 
 class GameOfLifeEvolutionTest {
 
@@ -21,7 +22,7 @@ class GameOfLifeEvolutionTest {
   private GameOfLifeSystem gameOfLifeSystem;
 
   @BeforeAll
-  static void beforeAll() { Hooks.onOperatorDebug();}
+  static void beforeAll() { ReactorDebugAgent.init();}
 
   @Test
   void blockPatternTest() {

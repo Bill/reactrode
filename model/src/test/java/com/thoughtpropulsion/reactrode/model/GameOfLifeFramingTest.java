@@ -16,6 +16,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Hooks;
 import reactor.test.StepVerifier;
+import reactor.tools.agent.ReactorDebugAgent;
 
 class GameOfLifeFramingTest {
 
@@ -28,7 +29,7 @@ class GameOfLifeFramingTest {
   private CoordinateSystem coordinateSystem;
 
   @BeforeAll
-  static void beforeAll() { Hooks.onOperatorDebug();}
+  static void beforeAll() { ReactorDebugAgent.init();}
 
   @BeforeEach
   void beforeEach() {

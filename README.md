@@ -10,11 +10,12 @@ Gameserver produces `allGenerations` flux which can be consumed by:
 
 ## TODO
 
-
 * drive Geode to LowMemoryException (w/ eviction, critical thresholds configured)
 * start up from generation stored in Geode 
 * feed browsers from Geode CQ-based Flux
 * &hellip; profit!
+* port from `.gradle.kts` to `pom.xml` and add global `dependencyManagement`
+* upgrade RSocket to 1.0.0-RC2 or newer
 * enable BlockHound https://github.com/reactor/BlockHound
 * side project: figure out how to make `Mono<Cell> put(final Mono<Cell> cellMono)` work analogously to its Flux counterpart
 * remove dependency on org.springframework.data:spring-data-commons in model module (necessary to make spring-data-geode serialization work)
@@ -26,6 +27,8 @@ Gameserver produces `allGenerations` flux which can be consumed by:
 * ~~connect Geode client (recorder) downstream~~
 * ~~cursory performance tuning~~
 * ~~drive Geode to OOM error~~
+* ~~Upgrade to reactor-core 3.3.0.M3~~
+* ~~replace `Hooks.onOperatorDebug()` with `ReactorDebugAgent.init()`~~
 
 ## Questions
 

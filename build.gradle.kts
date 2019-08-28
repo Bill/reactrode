@@ -13,7 +13,6 @@ configure<DependencyManagementExtension> {
     imports {
         mavenBom(org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES)
         mavenBom("io.projectreactor:reactor-bom:Californium-RELEASE")
-
     }
 }
 

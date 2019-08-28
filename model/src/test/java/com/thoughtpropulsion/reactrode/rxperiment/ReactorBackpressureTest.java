@@ -21,6 +21,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Hooks;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
+import reactor.tools.agent.ReactorDebugAgent;
 
 /**
  * A test that demonstrates how a {@link BaseSubscriber} provided to
@@ -35,7 +36,7 @@ class ReactorBackpressureTest {
   private Subscription subscriptionToFlux;
 
   @BeforeAll
-  static void beforeAll() { Hooks.onOperatorDebug();}
+  static void beforeAll() { ReactorDebugAgent.init();}
 
   @BeforeEach
   void beforeEach() {
