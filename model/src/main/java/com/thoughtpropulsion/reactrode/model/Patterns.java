@@ -15,11 +15,8 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
-import java.util.Spliterator;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 public class Patterns {
 
@@ -85,7 +82,11 @@ public class Patterns {
         .collect(Collectors.toList());
   }
 
-  public static List<Boolean> randomPattern(final int columns, final int rows) {
+  public static Pattern randomPattern(final int columns, final int rows) {
+    return new Pattern(new CoordinateSystem(columns,rows), randomList(columns,rows));
+  }
+
+  public static List<Boolean> randomList(final int columns, final int rows) {
     final Random random = createRandom(1L);
     return Stream.generate(random::nextBoolean).limit(columns * rows).collect(Collectors.toList());
   }

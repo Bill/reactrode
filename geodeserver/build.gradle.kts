@@ -26,7 +26,7 @@ dependencies {
     implementation(project(":model"))
 
 
-    implementation("org.springframework.geode:spring-geode-starter:1.1.0.RC2")
+    implementation("org.springframework.geode:spring-geode-starter:1.1.0.RELEASE")
 
 
     testImplementation("org.junit.jupiter:junit-jupiter:5.4.2")

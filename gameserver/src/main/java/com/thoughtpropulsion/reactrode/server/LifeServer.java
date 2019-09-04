@@ -19,14 +19,12 @@ public class LifeServer {
   }
 
   @MessageMapping("/rsocket/all-generations")
-  // TODO: see if I can return Publisher<Cell> instead
-  public Flux<Cell> allGenerations(final Coordinates _ignored) {
+  public Publisher<Cell> allGenerations(final Coordinates _ignored) {
     return Flux.from(allGenerations);
   }
 
   @MessageMapping("/rsocket/empties")
-  // TODO: see if I can return Publisher<Cell> instead
-  public Flux<Empty> empties(final Empty _ignored) {
+  public Publisher<Empty> empties(final Empty _ignored) {
     return Flux.generate(sink->{
       sink.next(Empty.create());
     });

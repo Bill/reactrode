@@ -1,6 +1,7 @@
 package com.thoughtpropulsion.reactrode.server;
 
 import static com.thoughtpropulsion.reactrode.model.Patterns.pufferfishSpaceshipPattern;
+import static com.thoughtpropulsion.reactrode.model.Patterns.randomPattern;
 
 import java.util.List;
 
@@ -30,18 +31,20 @@ public class ServerConfiguration1 {
 
   @Bean
   public Pattern getPattern() {
+
     return pufferfishSpaceshipPattern();
+//    return randomPattern(100,100);
   }
 
   @Bean
-  public Publisher<Cell> getPrimordialGeneration(final Pattern pattern) {
+  public Publisher<Cell> primordialGeneration(final Pattern pattern) {
     return Flux.fromIterable(
         Patterns.cellsFromBits(pattern, primordialGenerationNumber(), getCoordinateSystem()));
   }
 
   private Publisher<Cell> smallPrimordialGeneration() {
 
-    final List<Boolean> pattern = Patterns.randomPattern(100,100 );
+    final List<Boolean> pattern = Patterns.randomList(100,100 );
 
     return Flux.fromIterable(
         Patterns.cellsFromBits(pattern, primordialGenerationNumber(), getCoordinateSystem()));

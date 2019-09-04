@@ -1,11 +1,10 @@
 package com.thoughtpropulsion.reactrode.model;
 
-import static com.thoughtpropulsion.reactrode.model.Patterns.randomPattern;
+import static com.thoughtpropulsion.reactrode.model.Patterns.randomList;
 import static com.thoughtpropulsion.reactrode.model.Timing.elapsed;
 
 import java.util.List;
 
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import reactor.core.publisher.Flux;
@@ -21,7 +20,7 @@ public class PerformanceTest {
 
     final CoordinateSystem coordinateSystem = new CoordinateSystem(100, 100);
 
-    final List<Boolean> pattern = randomPattern(400,400 );
+    final List<Boolean> pattern = randomList(400,400 );
 
     final GameOfLifeSystem gameOfLifeSystem = GameOfLifeSystem.create(
         Flux.fromIterable(

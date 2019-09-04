@@ -30,7 +30,7 @@ dependencies {
 //    webflux is needed to cause rsocket/websocket to bind to a well-known port
     implementation("org.springframework.boot:spring-boot-starter-webflux")
 
-    implementation("org.springframework.geode:spring-geode-starter:1.1.0.RC2")
+    implementation("org.springframework.geode:spring-geode-starter:1.1.0.RELEASE")
 
     testImplementation("org.junit.jupiter:junit-jupiter:5.4.2")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.4.2")

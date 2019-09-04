@@ -19,7 +19,7 @@ dependencies {
 
     implementation("com.fasterxml.jackson.core:jackson-annotations:2.9.8")
 
-    implementation("org.springframework.data:spring-data-commons:2.2.0.RC2")
+    implementation("org.springframework.data:spring-data-commons:2.1.9.RELEASE")
 
     testImplementation("org.junit.jupiter:junit-jupiter:5.4.2")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.4.2")

@@ -10,6 +10,7 @@ Gameserver produces `allGenerations` flux which can be consumed by:
 
 ## TODO
 
+* index /Cells on key or cells.coordinates in Geode
 * drive Geode to LowMemoryException (w/ eviction, critical thresholds configured)
 * start up from generation stored in Geode 
 * feed browsers from Geode CQ-based Flux

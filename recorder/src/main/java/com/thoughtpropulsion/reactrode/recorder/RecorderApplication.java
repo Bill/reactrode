@@ -21,12 +21,16 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
+import org.springframework.data.gemfire.config.annotation.ClientCacheApplication;
+import org.springframework.data.gemfire.config.annotation.EnableContinuousQueries;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
 
 import org.apache.geode.cache.GemFireCache;
 
 @SpringBootApplication(scanBasePackageClasses = RecordingConfiguration.class)
+@ClientCacheApplication(subscriptionEnabled = true)
+@EnableContinuousQueries
 public class RecorderApplication {
 
   private static final int PARALLELISM = 4;
@@ -42,7 +46,7 @@ public class RecorderApplication {
   public static void main(String[] args) {
     applicationContext = new SpringApplicationBuilder()
         .sources(RecorderApplication.class)
-        .web(WebApplicationType.NONE)
+//        .web(WebApplicationType.NONE)
         .run(args);
   }
 
