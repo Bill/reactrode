@@ -7,6 +7,13 @@ plugins {
     id("org.springframework.boot") version "2.2.0.M5"
 }
 
+subprojects {
+    repositories {
+        mavenCentral()
+        maven { url = uri("https://repo.spring.io/milestone") }
+    }
+}
+
 apply(plugin = "io.spring.dependency-management")
 
 configure<DependencyManagementExtension> {
@@ -15,6 +22,7 @@ configure<DependencyManagementExtension> {
         mavenBom("io.projectreactor:reactor-bom:Californium-RELEASE")
     }
 }
+
 
 tasks.withType<Wrapper> {
     gradleVersion = "5.6"

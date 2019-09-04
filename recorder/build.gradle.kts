@@ -16,12 +16,6 @@ configurations {
     }
 }
 
-repositories {
-    mavenCentral()
-//    maven { url = uri("https://repo.spring.io/snapshot") }
-    maven { url = uri("https://repo.spring.io/libs-milestone") }
-}
-
 dependencies {
     implementation(project(":model"))
 
@@ -30,20 +24,20 @@ dependencies {
 //    webflux is needed to cause rsocket/websocket to bind to a well-known port
     implementation("org.springframework.boot:spring-boot-starter-webflux")
 
-    implementation("org.springframework.geode:spring-geode-starter:1.2.0.M1")
+    implementation("org.springframework.geode:spring-geode-starter")
     {
         exclude(group= "javax.servlet", module= "javax.servlet-api")
         exclude(group= "org.eclipse.jetty", module= "jetty-server")
 //        exclude(group="org.apache.logging.log4j", module=   "log4j-core")
     }
 
-    testImplementation("org.junit.jupiter:junit-jupiter:5.4.2")
-    testImplementation("org.junit.jupiter:junit-jupiter-params:5.4.2")
-    testImplementation("org.assertj:assertj-core:3.11.1")
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testImplementation("org.junit.jupiter:junit-jupiter-params")
+    testImplementation("org.assertj:assertj-core")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("io.projectreactor:reactor-test")
-    testImplementation("org.springframework.data:spring-data-geode-test:0.0.7.RELEASE")
+    testImplementation("org.springframework.data:spring-data-geode-test")
 
     developmentOnly("org.springframework.boot:spring-boot-devtools")
 }

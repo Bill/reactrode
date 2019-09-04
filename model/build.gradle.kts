@@ -6,27 +6,24 @@ group = "com.thoughtpropulsion"
 version = "0.0.1-SNAPSHOT"
 java.sourceCompatibility = JavaVersion.VERSION_1_8
 
-repositories {
-    mavenCentral()
-    maven { url = uri("https://repo.spring.io/milestone") }
-}
-
 dependencies {
-    implementation("io.projectreactor:reactor-core:3.3.0.M3")
-    implementation("io.projectreactor:reactor-tools:3.3.0.M3")
+    implementation(enforcedPlatform(project(":bom")))
 
-    implementation("io.vavr:vavr:0.9.2")
+    implementation("io.projectreactor:reactor-core")
+    implementation("io.projectreactor:reactor-tools")
 
-    implementation("com.fasterxml.jackson.core:jackson-annotations:2.9.8")
+    implementation("io.vavr:vavr")
 
-    implementation("org.springframework.data:spring-data-commons:2.1.9.RELEASE")
+    implementation("com.fasterxml.jackson.core:jackson-annotations")
 
-    testImplementation("org.junit.jupiter:junit-jupiter:5.4.2")
-    testImplementation("org.junit.jupiter:junit-jupiter-params:5.4.2")
-    testImplementation("org.assertj:assertj-core:3.11.1")
-    testImplementation("io.projectreactor:reactor-test:3.2.11.RELEASE")
+    implementation("org.springframework.data:spring-data-commons")
 
-    testImplementation("com.fasterxml.jackson.core:jackson-databind:2.9.8")
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testImplementation("org.junit.jupiter:junit-jupiter-params")
+    testImplementation("org.assertj:assertj-core")
+    testImplementation("io.projectreactor:reactor-test")
+
+    testImplementation("com.fasterxml.jackson.core:jackson-databind")
 }
 
 tasks.withType<Test> {

@@ -16,7 +16,7 @@ const client = new RSocketClient(
             dataMimeType: 'application/json',
             metadataMimeType: 'message/x.rsocket.routing.v0',
         },
-        transport: new RSocketWebSocketClient({url: 'ws://localhost:7001/rsocket'})
+        transport: new RSocketWebSocketClient({url: 'ws://localhost:7000/rsocket'})
     });
 
 export default client
