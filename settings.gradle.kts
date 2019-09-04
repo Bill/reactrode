@@ -3,7 +3,8 @@ include("model","gameserver","geodeserver","recorder","testclient","webapp")
 
 pluginManagement {
     repositories {
-        maven { url = uri("https://repo.spring.io/milestone") }
+        maven { url = uri("https://repo.spring.io/libs-milestone") }
+        maven { url = uri("https://repo.spring.io/libs-snapshots") }
         gradlePluginPortal()
     }
     resolutionStrategy {

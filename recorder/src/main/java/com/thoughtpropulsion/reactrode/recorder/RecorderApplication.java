@@ -18,11 +18,13 @@ import org.reactivestreams.Publisher;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.gemfire.config.annotation.ClientCacheApplication;
 import org.springframework.data.gemfire.config.annotation.EnableContinuousQueries;
+import org.springframework.data.gemfire.config.annotation.EnableLogging;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
 
@@ -46,7 +48,6 @@ public class RecorderApplication {
   public static void main(String[] args) {
     applicationContext = new SpringApplicationBuilder()
         .sources(RecorderApplication.class)
-//        .web(WebApplicationType.NONE)
         .run(args);
   }
 

@@ -19,7 +19,7 @@ configurations {
 repositories {
     mavenCentral()
 //    maven { url = uri("https://repo.spring.io/snapshot") }
-    maven { url = uri("https://repo.spring.io/milestone") }
+    maven { url = uri("https://repo.spring.io/libs-milestone") }
 }
 
 dependencies {
@@ -30,7 +30,12 @@ dependencies {
 //    webflux is needed to cause rsocket/websocket to bind to a well-known port
     implementation("org.springframework.boot:spring-boot-starter-webflux")
 
-    implementation("org.springframework.geode:spring-geode-starter:1.1.0.RELEASE")
+    implementation("org.springframework.geode:spring-geode-starter:1.2.0.M1")
+    {
+        exclude(group= "javax.servlet", module= "javax.servlet-api")
+        exclude(group= "org.eclipse.jetty", module= "jetty-server")
+//        exclude(group="org.apache.logging.log4j", module=   "log4j-core")
+    }
 
     testImplementation("org.junit.jupiter:junit-jupiter:5.4.2")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.4.2")

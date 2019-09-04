@@ -63,13 +63,11 @@ public class RecorderServer {
               new ContinuousQueryDefinition(
                   query,
                   cqEvent -> {
-                    System.out.println("GOT SHTUFFFFFF!!!! " + cqEvent.getNewValue());
                     sink.next((Cell) cqEvent.getNewValue());
                     },
                   false));
           },
         // TODO: don't buffer!!!!!!
         FluxSink.OverflowStrategy.BUFFER);
-//    return Flux.just(Cell.createAlive(Coordinates.create(0,0,coordinates.generation),false));
   }
 }
