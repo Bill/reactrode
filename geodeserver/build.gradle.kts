@@ -17,12 +17,12 @@ configurations {
 }
 
 dependencies {
-    implementation(project(":model"))
+    implementation(enforcedPlatform(project(":bom")))
 
+    implementation(project(":model"))
 
     implementation("org.springframework.geode:spring-geode-starter")
 
-    testImplementation(platform(project(":bom")))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("org.junit.jupiter:junit-jupiter-params")
     testImplementation("org.assertj:assertj-core")

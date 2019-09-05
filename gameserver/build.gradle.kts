@@ -17,6 +17,8 @@ configurations {
 }
 
 dependencies {
+    implementation(enforcedPlatform(project(":bom")))
+
     implementation(project(":model"))
 
     implementation("org.springframework.boot:spring-boot-starter-rsocket")
