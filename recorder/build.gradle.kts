@@ -55,7 +55,7 @@ tasks.withType<Wrapper> {
     gradleVersion = "5.6"
 }
 
-springBoot {mainClassName = "com.thoughtpropulsion.reactrode.recorder.Application"}
+springBoot {mainClassName = "com.thoughtpropulsion.reactrode.recorder.RecorderApplication"}
 
 configurations.all  {
 // TODO: remove this exclusion once we are using Geode 1.10

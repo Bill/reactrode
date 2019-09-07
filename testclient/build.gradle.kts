@@ -39,4 +39,4 @@ tasks.withType<Wrapper> {
     gradleVersion = "5.6"
 }
 
-springBoot {mainClassName = "com.thoughtpropulsion.reactrode.client.Application"}
+springBoot {mainClassName = "com.thoughtpropulsion.reactrode.client.TestClientApplication"}

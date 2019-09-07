@@ -44,7 +44,7 @@ tasks.withType<Wrapper> {
     gradleVersion = "5.5"
 }
 
-springBoot {mainClassName = "com.thoughtpropulsion.reactrode.geodeserver.GeodeApplication"}
+springBoot {mainClassName = "com.thoughtpropulsion.reactrode.geodeserver.GeodeServerApplication"}
 
 configurations.all  {
 // TODO: remove this exclusion once we are using Geode 1.10
