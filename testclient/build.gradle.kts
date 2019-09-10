@@ -3,8 +3,6 @@ plugins {
     java
 }
 
-apply(plugin = "io.spring.dependency-management")
-
 group = "com.thoughtpropulsion"
 version = "0.0.1-SNAPSHOT"
 java.sourceCompatibility = JavaVersion.VERSION_11
@@ -17,6 +15,8 @@ configurations {
 }
 
 dependencies {
+    implementation(enforcedPlatform(project(":bom")))
+
     implementation(project(":model"))
 
     implementation("org.springframework.boot:spring-boot-starter")

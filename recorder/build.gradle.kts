@@ -58,7 +58,7 @@ tasks.withType<Wrapper> {
 springBoot {mainClassName = "com.thoughtpropulsion.reactrode.recorder.RecorderApplication"}
 
 configurations.all  {
-// TODO: remove this exclusion once we are using Geode 1.10
+    // TODO: remove this exclusion once we are using Geode 1.10
 // fixed here: https://issues.apache.org/jira/browse/GEODE-7050
     exclude( group="org.apache.logging.log4j", module = "log4j-to-slf4j")
 }

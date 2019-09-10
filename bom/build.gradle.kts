@@ -1,3 +1,6 @@
+/*
+ See also settings.gradle.kts for spring-boot-gradle-plugin version
+ */
 plugins {
     `java-platform`
 }
@@ -9,28 +12,33 @@ repositories {
     mavenCentral()
 }
 
+javaPlatform {
+    allowDependencies()
+}
+
 dependencies {
+
+    api(platform("io.projectreactor:reactor-bom:Dysprosium-RC1"))
+    api(platform("org.springframework.boot:spring-boot-dependencies:2.2.0.M5"))
+
     constraints {
 
-        api("io.projectreactor:reactor-core:3.3.0.M3")
-        api("io.projectreactor:reactor-tools:3.3.0.M3")
-        api("io.projectreactor:reactor-test:3.3.0.M3")
+        api("org.springframework.geode:spring-geode-starter:1.2.0.M1") // Aug 21, 2019
 
-        api("io.vavr:vavr:0.9.2")
+        api("org.springframework.data:spring-data-geode-test:0.0.7.RELEASE") // Aug 14, 2019
 
-//        api("org.springframework.boot:spring-boot-starter-parent:2.2.0.M5")
+        api("org.springframework.data:spring-data-commons:2.1.10.RELEASE") // Aug 5, 2019
 
-        api("org.springframework.geode:spring-geode-starter:1.2.0.M1")
-        api("org.springframework.data:spring-data-geode-test:0.0.7.RELEASE")
-
-        api("org.springframework.data:spring-data-commons:2.1.9.RELEASE")
-
-        api("com.fasterxml.jackson.core:jackson-annotations:2.9.8")
-        api("com.fasterxml.jackson.core:jackson-databind:2.9.8")
+        api("com.fasterxml.jackson.core:jackson-annotations:2.9.9") // May 16, 2019 (old)
+        api("com.fasterxml.jackson.core:jackson-databind:2.9.9")    // May 16, 2019 (old)
 
         api("org.junit.jupiter:junit-jupiter:5.4.2")
         api("org.junit.jupiter:junit-jupiter-params:5.4.2")
 
-        api("org.assertj:assertj-core:3.11.1")
+        api("org.assertj:assertj-core:3.13.2") // Aug 4, 2019
+
+        api("io.vavr:vavr:0.10.2") // Aug 2, 2019
+
     }
 }
+

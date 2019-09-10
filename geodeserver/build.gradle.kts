@@ -3,7 +3,7 @@ plugins {
     java
 }
 
-apply(plugin = "io.spring.dependency-management")
+//apply(plugin = "io.spring.dependency-management")
 
 group = "com.thoughtpropulsion"
 version = "0.0.1-SNAPSHOT"

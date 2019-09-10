@@ -12,12 +12,11 @@ dependencies {
     implementation("io.projectreactor:reactor-core")
     implementation("io.projectreactor:reactor-tools")
 
-    implementation("io.vavr:vavr")
-
     implementation("com.fasterxml.jackson.core:jackson-annotations")
 
     implementation("org.springframework.data:spring-data-commons")
 
+    testImplementation("io.vavr:vavr")
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("org.junit.jupiter:junit-jupiter-params")
     testImplementation("org.assertj:assertj-core")
