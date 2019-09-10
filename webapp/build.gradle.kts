@@ -1,10 +1,7 @@
 plugins {
-    //        id("org.springframework.boot") version "2.2.0.M4"
     id("org.springframework.boot")
     java
 }
-
-apply(plugin = "io.spring.dependency-management")
 
 group = "com.thoughtpropulsion"
 version = "0.0.1-SNAPSHOT"
@@ -18,6 +15,8 @@ configurations {
 }
 
 dependencies {
+    implementation(enforcedPlatform(project(":bom")))
+
     implementation(project(":model"))
 
     implementation("org.springframework.boot:spring-boot-starter-web")

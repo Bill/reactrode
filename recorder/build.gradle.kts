@@ -3,6 +3,7 @@ plugins {
     java
 }
 
+// TODO: eliminate this dependency on the Spring Gradle Dependency Management Plugin
 apply(plugin = "io.spring.dependency-management")
 
 group = "com.thoughtpropulsion"
