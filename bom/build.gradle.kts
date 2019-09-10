@@ -18,8 +18,11 @@ javaPlatform {
 
 dependencies {
 
-    api(platform("io.projectreactor:reactor-bom:Dysprosium-RC1"))
-    api(platform("org.springframework.boot:spring-boot-dependencies:2.2.0.M5"))
+    api(enforcedPlatform("org.springframework.boot:spring-boot-dependencies:2.2.0.M5"))
+
+    // Spring Boot constrains the project reactor artifacts, so we do not need to unless we use an
+    // esoteric reactor module
+//    api(enforcedPlatform("io.projectreactor:reactor-bom:Dysprosium-RC1"))
 
     constraints {
 
@@ -27,10 +30,10 @@ dependencies {
 
         api("org.springframework.data:spring-data-geode-test:0.0.7.RELEASE") // Aug 14, 2019
 
-        api("org.springframework.data:spring-data-commons:2.1.10.RELEASE") // Aug 5, 2019
-
-        api("com.fasterxml.jackson.core:jackson-annotations:2.9.9") // May 16, 2019 (old)
-        api("com.fasterxml.jackson.core:jackson-databind:2.9.9")    // May 16, 2019 (old)
+        // Spring Boot constrains the jackson artifacts, so we do not need to unless we use an
+        // esoteric module
+//        api("com.fasterxml.jackson.core:jackson-annotations:2.9.9") // May 16, 2019 (old)
+//        api("com.fasterxml.jackson.core:jackson-databind:2.9.9")    // May 16, 2019 (old)
 
         api("org.junit.jupiter:junit-jupiter:5.4.2")
         api("org.junit.jupiter:junit-jupiter-params:5.4.2")

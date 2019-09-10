@@ -28,7 +28,6 @@ import org.apache.geode.cache.RegionAttributes;
 @EnableManager
 public class GeodeConfiguration {
 
-  @Bean("Cells")
   /*
   TODO: make LRU work again
   When this changed from a ReplicatedRegionFactoryBean<Long,Cell> in order to make CQ work,
@@ -40,6 +39,42 @@ public class GeodeConfiguration {
    * the {@link PartitionAttributes}.
 
   */
+  PartitionedRegionFactoryBean<Long, Cell> getCellRegionBorkBork(
+      final GemFireCache gemFireCache) {
+
+    final PartitionedRegionFactoryBean<Long, Cell>
+        regionFactoryBean =
+        new PartitionedRegionFactoryBean<>();
+
+    regionFactoryBean.setName("Cells");
+    regionFactoryBean.setCache(gemFireCache);
+
+    // this works only for Replicated regions--not Partitioned regions
+//    regionFactoryBean.setEvictionAttributes(
+//        EvictionAttributes.createLRUMemoryAttributes(50)
+//    );
+
+    // so let's create PartitionAttributes and set the local max memory
+
+    final PartitionAttributesFactory<Long, Cell> paf = new PartitionAttributesFactory<>();
+    paf.setLocalMaxMemory(50);
+
+    final PartitionAttributes<Long, Cell> pa = paf.create();
+
+    // woops: can't set PartitionAttributes on a PartitionedRegionFactoryBean<>
+//    regionFactoryBean.setAttributes(pa);
+
+    // I found this deprecated class tho!
+    AttributesFactory<Long,Cell> af = new AttributesFactory<>();
+    af.setPartitionAttributes(pa);
+    RegionAttributes ra = af.create();
+
+    regionFactoryBean.setAttributes(ra);
+
+    return regionFactoryBean;
+  }
+
+  @Bean("Cells")
   PartitionedRegionFactoryBean<Long, Cell> getCellRegion(
       final GemFireCache gemFireCache) {
 

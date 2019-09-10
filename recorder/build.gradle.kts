@@ -3,9 +3,6 @@ plugins {
     java
 }
 
-// TODO: eliminate this dependency on the Spring Gradle Dependency Management Plugin
-apply(plugin = "io.spring.dependency-management")
-
 group = "com.thoughtpropulsion"
 version = "0.0.1-SNAPSHOT"
 java.sourceCompatibility = JavaVersion.VERSION_1_8
@@ -33,6 +30,8 @@ dependencies {
         exclude(group= "org.eclipse.jetty", module= "jetty-server")
 //        exclude(group="org.apache.logging.log4j", module=   "log4j-core")
     }
+
+    testImplementation(enforcedPlatform(project(":bom")))
 
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("org.junit.jupiter:junit-jupiter-params")
