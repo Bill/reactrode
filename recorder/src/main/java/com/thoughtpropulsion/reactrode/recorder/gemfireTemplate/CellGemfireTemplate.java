@@ -8,8 +8,8 @@ import org.springframework.stereotype.Component;
 import org.apache.geode.cache.Region;
 
 @Component
-public class CellGemFireTemplate extends GemfireTemplate {
-    public CellGemFireTemplate(@Qualifier("Cells") final Region<Long, Cell> region) {
+public class CellGemfireTemplate extends GemfireTemplate {
+    public CellGemfireTemplate(@Qualifier("Cells") final Region<Long, Cell> region) {
     super(region);
   }
 

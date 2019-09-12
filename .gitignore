@@ -2,3 +2,8 @@
 build/
 out/
 .gradle/
+
+*.log
+*.hprof
+*.dat
+*.gfs

@@ -4,15 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 
-import com.thoughtpropulsion.reactrode.model.Cell;
-import com.thoughtpropulsion.reactrode.model.CoordinateSystem;
-import com.thoughtpropulsion.reactrode.model.GameOfLifeSystem;
-import com.thoughtpropulsion.reactrode.model.Patterns;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Hooks;
 import reactor.test.StepVerifier;
 import reactor.tools.agent.ReactorDebugAgent;
 

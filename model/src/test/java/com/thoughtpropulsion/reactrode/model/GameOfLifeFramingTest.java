@@ -2,19 +2,12 @@ package com.thoughtpropulsion.reactrode.model;
 
 import java.util.List;
 
-import com.thoughtpropulsion.reactrode.model.Cell;
-import com.thoughtpropulsion.reactrode.model.CoordinateSystem;
-import com.thoughtpropulsion.reactrode.model.Coordinates;
-import com.thoughtpropulsion.reactrode.model.GameOfLifeSystem;
-import com.thoughtpropulsion.reactrode.model.Patterns;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Hooks;
 import reactor.test.StepVerifier;
 import reactor.tools.agent.ReactorDebugAgent;
 

@@ -12,19 +12,16 @@ import java.util.stream.Collectors;
 import com.thoughtpropulsion.reactrode.model.Cell;
 import com.thoughtpropulsion.reactrode.model.CoordinateSystem;
 import com.thoughtpropulsion.reactrode.recorder.config.RecordingConfiguration;
-import com.thoughtpropulsion.reactrode.recorder.gemfireTemplate.CellGemFireTemplate;
+import com.thoughtpropulsion.reactrode.recorder.gemfireTemplate.CellGemfireTemplate;
 import com.thoughtpropulsion.reactrode.recorder.subscriber.RecordingSubscriber;
 import org.reactivestreams.Publisher;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.gemfire.config.annotation.ClientCacheApplication;
 import org.springframework.data.gemfire.config.annotation.EnableContinuousQueries;
-import org.springframework.data.gemfire.config.annotation.EnableLogging;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
 
@@ -67,17 +64,16 @@ public class RecorderApplication {
 
   @Bean
   public ApplicationRunner getRunner(
-      final CellGemFireTemplate cellGemFireTemplate,
-      final CoordinateSystem coordinateSystem,
-      GemFireCache cache) throws Exception {
+      final CellGemfireTemplate cellGemfireTemplate,
+      final CoordinateSystem coordinateSystem) throws Exception {
 
     final Publisher<Cell> source = recordingSubscriber.allGenerations();
 
-    return createParallelBulkPutRunner(cellGemFireTemplate, coordinateSystem, source,
+    return createParallelBulkPutRunner(cellGemfireTemplate, coordinateSystem, source,
         PARALLELISM);
   }
 
-  private ApplicationRunner createSerialPutRunner(final CellGemFireTemplate cellGemFireTemplate,
+  private ApplicationRunner createSerialPutRunner(final CellGemfireTemplate cellGemfireTemplate,
                                                   final CoordinateSystem coordinateSystem,
                                                   final Publisher<Cell> source) {
     return args -> {
@@ -87,13 +83,13 @@ public class RecorderApplication {
       Flux.from(source)
           .limitRequest(LIMIT_REQUEST)
           .doOnNext(
-              getSingleCellConsumer(cellGemFireTemplate, coordinateSystem, n, firstElementReceived))
+              getSingleCellConsumer(cellGemfireTemplate, coordinateSystem, n, firstElementReceived))
           .doOnTerminate(summarizePerformance(n, starting, firstElementReceived))
           .blockLast();
     };
   }
 
-  private ApplicationRunner createParallelPutRunner(final CellGemFireTemplate cellGemFireTemplate,
+  private ApplicationRunner createParallelPutRunner(final CellGemfireTemplate cellGemfireTemplate,
                                                     final CoordinateSystem coordinateSystem,
                                                     final Publisher<Cell> source,
                                                     final int parallelism) {
@@ -106,14 +102,14 @@ public class RecorderApplication {
           .parallel(parallelism)
           .runOn(Schedulers.elastic())
           .doOnNext(
-              getSingleCellConsumer(cellGemFireTemplate, coordinateSystem, n, firstElementReceived))
+              getSingleCellConsumer(cellGemfireTemplate, coordinateSystem, n, firstElementReceived))
           .doOnTerminate(summarizePerformance(n, starting, firstElementReceived))
           .sequential()
           .blockLast();
     };
   }
 
-  private ApplicationRunner createSerialBulkPutRunner(final CellGemFireTemplate cellGemFireTemplate,
+  private ApplicationRunner createSerialBulkPutRunner(final CellGemfireTemplate cellGemfireTemplate,
                                                       final CoordinateSystem coordinateSystem,
                                                       final Publisher<Cell> source,
                                                       final int batchSize) {
@@ -129,14 +125,14 @@ public class RecorderApplication {
           coordinateSystem)
 
           .doOnNext(
-              getBulkCellConsumer(cellGemFireTemplate, coordinateSystem, n, firstElementReceived))
+              getBulkCellConsumer(cellGemfireTemplate, coordinateSystem, n, firstElementReceived))
           .doOnTerminate(summarizePerformance(n, starting, firstElementReceived))
           .blockLast();
     };
   }
 
   private ApplicationRunner createParallelBulkPutRunner(
-      final CellGemFireTemplate cellGemFireTemplate,
+      final CellGemfireTemplate cellGemfireTemplate,
       final CoordinateSystem coordinateSystem,
       final Publisher<Cell> source,
       final int parallelism) {
@@ -154,14 +150,14 @@ public class RecorderApplication {
           .parallel(parallelism)
           .runOn(Schedulers.elastic())
           .doOnNext(
-              getBulkCellConsumer(cellGemFireTemplate, coordinateSystem, n, firstElementReceived))
+              getBulkCellConsumer(cellGemfireTemplate, coordinateSystem, n, firstElementReceived))
           .doOnTerminate(summarizePerformance(n, starting, firstElementReceived))
           .sequential()
           .blockLast();
     };
   }
 
-  private Consumer<Cell> getSingleCellConsumer(final CellGemFireTemplate cellGemFireTemplate,
+  private Consumer<Cell> getSingleCellConsumer(final CellGemfireTemplate cellGemfireTemplate,
                                                final CoordinateSystem coordinateSystem,
                                                final LongAdder n,
                                                final AtomicLong firstElementReceived) {
@@ -171,7 +167,7 @@ public class RecorderApplication {
       }
       n.increment();
       try {
-        cellGemFireTemplate.put(coordinateSystem.toOffset(cell.coordinates), cell);
+        cellGemfireTemplate.put(coordinateSystem.toOffset(cell.coordinates), cell);
       } catch (final Exception e) {
         System.out.println("for cell" + cell);
         e.printStackTrace();
@@ -180,7 +176,7 @@ public class RecorderApplication {
     };
   }
 
-  private Consumer<Collection<Cell>> getBulkCellConsumer(final CellGemFireTemplate cellGemFireTemplate,
+  private Consumer<Collection<Cell>> getBulkCellConsumer(final CellGemfireTemplate cellGemfireTemplate,
                                                          final CoordinateSystem coordinateSystem,
                                                          final LongAdder n,
                                                          final AtomicLong firstElementReceived) {
@@ -193,7 +189,7 @@ public class RecorderApplication {
           return new Pair<>(key, cell);
         }).collect(Collectors.toMap(pair -> pair.k, pair -> pair.v));
         n.add(entries.size());
-        cellGemFireTemplate.putAll(entries);
+        cellGemfireTemplate.putAll(entries);
       } catch (final Exception e) {
         e.printStackTrace();
         throw e;

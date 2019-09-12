@@ -1,21 +1,14 @@
 package com.thoughtpropulsion.reactrode.recorder.server;
 
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
-
 import com.thoughtpropulsion.reactrode.model.Cell;
 import com.thoughtpropulsion.reactrode.model.Coordinates;
 import org.reactivestreams.Publisher;
 import org.springframework.data.gemfire.listener.ContinuousQueryDefinition;
-import org.springframework.data.gemfire.listener.ContinuousQueryListener;
 import org.springframework.data.gemfire.listener.ContinuousQueryListenerContainer;
-import org.springframework.data.gemfire.listener.annotation.ContinuousQuery;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.stereotype.Controller;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
-
-import org.apache.geode.cache.query.CqEvent;
 
 @Controller
 public class RecorderServer {

@@ -11,7 +11,7 @@ import com.thoughtpropulsion.reactrode.model.Cell;
 import com.thoughtpropulsion.reactrode.model.CoordinateSystem;
 import com.thoughtpropulsion.reactrode.model.Coordinates;
 import com.thoughtpropulsion.reactrode.recorder.server.RecorderServer;
-import com.thoughtpropulsion.reactrode.recorder.server.config.GemFireServerConfiguration;
+import com.thoughtpropulsion.reactrode.recorder.server.config.GeodeServerConfigurationPartitionedRegion;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -30,7 +30,6 @@ import org.springframework.data.gemfire.listener.annotation.ContinuousQuery;
 import org.springframework.data.gemfire.tests.integration.ForkingClientServerIntegrationTestsSupport;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
-import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
 import org.apache.geode.cache.GemFireCache;
@@ -39,18 +38,18 @@ import org.apache.geode.cache.client.ClientRegionShortcut;
 import org.apache.geode.cache.query.CqEvent;
 
 @RunWith(SpringRunner.class)
-@ContextConfiguration(classes = RecorderServerCQTest.GemFireClientConfiguration.class)
+@ContextConfiguration(classes = RecorderServerCQTest.GeodeClientConfiguration.class)
 @SuppressWarnings("unused")
 public class RecorderServerCQTest extends
     ForkingClientServerIntegrationTestsSupport {
 
-  private static final String GEMFIRE_LOG_LEVEL = "error";
+  private static final String GEODE_LOG_LEVEL = "error";
   public static final int PRIMORDIAL_GENERATION = -1;
   public static final CoordinateSystem coordinateSystem = new CoordinateSystem(100, 100);
 
   @BeforeClass
-  public static void startGemFireServer() throws IOException {
-    startGemFireServer(GemFireServerConfiguration.class);
+  public static void startGeodeServer() throws IOException {
+    startGemFireServer(GeodeServerConfigurationPartitionedRegion.class, "-Xmx100m", "-Xms100m");
   }
 
   @Autowired
@@ -87,15 +86,15 @@ public class RecorderServerCQTest extends
 
   @ClientCacheApplication(subscriptionEnabled = true, retryAttempts = 1, servers = @ClientCacheApplication.Server,
       readyForEvents = true, durableClientId = "22", durableClientTimeout = 5)
-  @EnableLogging(logLevel = GEMFIRE_LOG_LEVEL)
+  @EnableLogging(logLevel = GEODE_LOG_LEVEL)
   @EnablePdx
   @Import(value = RecorderServer.class)
   @EnableContinuousQueries
-  static class GemFireClientConfiguration {
+  static class GeodeClientConfiguration {
 
     @ContinuousQuery(name = "OurFirstCQ", query = "select * from /Cells")
     public void someCQ(CqEvent cqEvent) {
-      System.out.println("GemFireClientConfiguration.someCQ " + cqEvent.getNewValue());
+      System.out.println("GeodeClientConfiguration.someCQ " + cqEvent.getNewValue());
     }
 
     @Bean("Cells")

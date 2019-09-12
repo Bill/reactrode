@@ -18,11 +18,12 @@ javaPlatform {
 
 dependencies {
 
-    api(enforcedPlatform("org.springframework.boot:spring-boot-dependencies:2.2.0.M5"))
-
     // Spring Boot constrains the project reactor artifacts, so we do not need to unless we use an
     // esoteric reactor module
 //    api(enforcedPlatform("io.projectreactor:reactor-bom:Dysprosium-RC1"))
+
+    // TODO: upgrade to M6 or later
+    api(enforcedPlatform("org.springframework.boot:spring-boot-dependencies:2.2.0.M5"))
 
     constraints {
 
