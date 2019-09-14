@@ -8,6 +8,10 @@ Gameserver produces `allGenerations` flux which can be consumed by:
 * Java-based testclient app
 * Java-based recorder app, which feeds geodeserver Geode server
 
+## Build and Run
+
+Works with OpenJDK 12 from Oracle and Adopt OpenJDK 12. 
+
 ## TODO
 
 * index /Cells on key or cells.coordinates in Geode

@@ -82,13 +82,13 @@ public class Patterns {
         .collect(Collectors.toList());
   }
 
-  public static Pattern randomPattern(final int columns, final int rows) {
-    return new Pattern(new CoordinateSystem(columns,rows), randomList(columns,rows));
+  public static Pattern randomPattern(final CoordinateSystem coordinateSystem) {
+    return new Pattern(coordinateSystem, randomList(coordinateSystem));
   }
 
-  public static List<Boolean> randomList(final int columns, final int rows) {
+  public static List<Boolean> randomList(final CoordinateSystem coordinateSystem) {
     final Random random = createRandom(1L);
-    return Stream.generate(random::nextBoolean).limit(columns * rows).collect(Collectors.toList());
+    return Stream.generate(random::nextBoolean).limit(coordinateSystem.size()).collect(Collectors.toList());
   }
 
   public static Random createRandom(final long seed) {
@@ -107,7 +107,8 @@ public class Patterns {
         0, 0, 0, 0);
   }
 
-  public static Pattern pufferfishSpaceshipPattern() {
+  public static Pattern pufferfishSpaceshipPattern(
+      final CoordinateSystem coordinateSystem) {
     final InputStream
         bits =
         Patterns.class.getClassLoader().getResourceAsStream("pufferfishSpaceship.bits");
@@ -133,8 +134,8 @@ public class Patterns {
         }
       }
       rows = cells.size() / columns;
-      assert (columns <= 100);
-      assert (rows <= 100);
+      assert (columns <= coordinateSystem.columns);
+      assert (rows <= coordinateSystem.rows);
       return new Pattern(new CoordinateSystem(columns,rows), cells);
     } catch (IOException e) {
       throw new RuntimeException(e);

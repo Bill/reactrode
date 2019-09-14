@@ -14,7 +14,7 @@ import org.apache.geode.cache.GemFireCache;
 
 
 @CacheServerApplication(name = "AutoConfiguredContinuousQueryIntegrationTests", logLevel = "error",
-    criticalHeapPercentage = 80f, evictionHeapPercentage = 60f)
+    criticalHeapPercentage = 80f, evictionHeapPercentage = 70f)
 @EnablePdx
 @EnableLogging(logLevel = "info", logFile = "/Users/bburcham/Projects/reactrode/geode.log")
 @EnableStatistics(archiveFile = "/Users/bburcham/Projects/reactrode/statistics.gfs")

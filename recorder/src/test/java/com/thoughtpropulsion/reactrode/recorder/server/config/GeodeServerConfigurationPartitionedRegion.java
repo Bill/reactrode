@@ -9,19 +9,21 @@ import org.springframework.data.gemfire.config.annotation.EnableLogging;
 import org.springframework.data.gemfire.config.annotation.EnablePdx;
 import org.springframework.data.gemfire.config.annotation.EnableStatistics;
 
+import org.apache.geode.cache.AttributesFactory;
 import org.apache.geode.cache.EvictionAttributes;
 import org.apache.geode.cache.GemFireCache;
+import org.apache.geode.cache.PartitionAttributesFactory;
 
 @CacheServerApplication(name = "AutoConfiguredContinuousQueryIntegrationTests", logLevel = "error",
-    criticalHeapPercentage = 80f, evictionHeapPercentage = 60f)
+    criticalHeapPercentage = 80f, evictionHeapPercentage = 70f)
 @EnablePdx
-@EnableLogging(logLevel = "info", logFile="/Users/bburcham/Projects/reactrode/geode.log")
-@EnableStatistics(archiveFile="/Users/bburcham/Projects/reactrode/statistics.gfs")
+@EnableLogging(logLevel = "info", logFile = "/Users/bburcham/Projects/reactrode/geode.log")
+@EnableStatistics(archiveFile = "/Users/bburcham/Projects/reactrode/statistics.gfs")
 public class GeodeServerConfigurationPartitionedRegion {
 
   public static void main(String[] args) {
 
-    System.out.println("Geode Server using Java version: " + System.getProperty("java.version") );
+    System.out.println("Geode Server using Java version: " + System.getProperty("java.version"));
     AnnotationConfigApplicationContext applicationContext =
         new AnnotationConfigApplicationContext(GeodeServerConfigurationPartitionedRegion.class);
 
@@ -88,6 +90,13 @@ public class GeodeServerConfigurationPartitionedRegion {
         EvictionAttributes.createLRUHeapAttributes()
 
     );
+
+    final AttributesFactory attributesFactory = new AttributesFactory();
+
+    attributesFactory.setPartitionAttributes(
+        new PartitionAttributesFactory().setTotalNumBuckets(1).create());
+
+    factory.setAttributes(attributesFactory.create());
 
     return factory;
   }

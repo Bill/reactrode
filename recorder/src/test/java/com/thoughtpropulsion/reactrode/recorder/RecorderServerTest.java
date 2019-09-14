@@ -4,8 +4,9 @@ import static com.thoughtpropulsion.reactrode.model.Patterns.randomList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
-import java.time.Duration;
 import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.UnaryOperator;
 
 import javax.annotation.Resource;
 
@@ -34,7 +35,6 @@ import reactor.test.StepVerifier;
 import org.apache.geode.cache.GemFireCache;
 import org.apache.geode.cache.Region;
 import org.apache.geode.cache.client.ClientRegionShortcut;
-import org.apache.geode.cache.client.ServerOperationException;
 
 @RunWith(SpringRunner.class)
 //@ContextConfiguration(classes =RecorderServerTest.GeodeClientConfiguration.class)
@@ -44,13 +44,44 @@ import org.apache.geode.cache.client.ServerOperationException;
 public class RecorderServerTest extends
     ForkingClientServerIntegrationTestsSupport {
 
-  public static final int PRIMORDIAL_GENERATION = -1;
-  public static final CoordinateSystem coordinateSystem = new CoordinateSystem(100, 100);
+  static final int PRIMORDIAL_GENERATION = -1;
+  static final CoordinateSystem coordinateSystem = new CoordinateSystem(100, 100);
+
+  Consumer<Cell>
+      putCell = (final Cell cell) -> this.cells.put(coordinateSystem.toOffset(cell.coordinates), cell);
+
+  // a higher-order function that takes a cell op function and wraps it in retrying
+  UnaryOperator<Consumer<Cell>>
+      withRetry = (final Consumer<Cell> operation) -> (final Cell cell) -> {
+    int attempt = 1;
+    while (true) {
+      try {
+        operation.accept(cell);
+        return;
+      } catch (final Throwable e) {
+        if (attempt >= 3)
+          throw e;
+        else {
+          System.out.println(String.format(
+              "sleeping after attempt %d to put cell %s, due to exception:",
+              attempt, cell, e));
+          e.printStackTrace(System.out);
+          ++attempt;
+        }
+      }
+      try {
+        Thread.sleep(5_000);
+      } catch (InterruptedException _ignored) {
+      }
+    }
+  };
 
   @BeforeClass
   public static void startGeodeServer() throws IOException {
-    startGemFireServer(GeodeServerConfigurationPartitionedRegion.class,
-        "-Xmx100m", "-Xms100m", "-XX:+UnlockExperimentalVMOptions", "-XX:+UseShenandoahGC");
+    startGemFireServer(GeodeServerConfigurationReplicatedRegion.class,
+        "-Xmx100m", "-Xms100m",
+        // While OpenJDK 12 defaults to G1GC now, Geode 1.9 doc says use CMS
+        "‑XX:+UseConcMarkSweepGC", "‑XX:CMSInitiatingOccupancyFraction=60");
   }
 
   @Autowired
@@ -61,57 +92,34 @@ public class RecorderServerTest extends
   private Region<Integer, Cell> cells;
 
   @Test
-  public void recordCell() {
-    final Cell cell = Cell.createAlive(coordinateSystem.createCoordinates(0, 0, PRIMORDIAL_GENERATION),true);
-    final int key = coordinateSystem.toOffset(cell.coordinates);
-    cells.put(key, cell);
-    assertThat(cells.keySetOnServer().contains(key)).isTrue();
-    assertThat(cells.get(key)).isEqualTo(cell);
+  public void recordAFewCellsTest() {
+    recordCells(withRetry.apply(putCell), 10);
   }
 
   @Test
-  public void recordAFewCells() {
+  public void recordLotsOfCellsTest() {
+    recordCells(putCell, 1_000_000);
+  }
 
-    final List<Boolean> pattern = randomList(400,400 );
+  @Test
+  public void recordLotsOfCellsWithRetryOnExceptionTest() {
+    recordCells(withRetry.apply(putCell), 1_000_000);
+  }
+
+  void recordCells(final Consumer<Cell> recorder, final int n) {
+
+    final List<Boolean> pattern = randomList(coordinateSystem);
 
     final GameOfLifeSystem gameOfLifeSystem = GameOfLifeSystem.create(
         Flux.fromIterable(
             Patterns.cellsFromBits(pattern, PRIMORDIAL_GENERATION, coordinateSystem)),
         coordinateSystem);
-
-    Flux.from(gameOfLifeSystem.getAllGenerations())
-        .limitRequest(10)
-        .doOnNext(cell->cells.put(coordinateSystem.toOffset(cell.coordinates), cell))
-        .subscribe();
-  }
-
-  @Test
-  public void recordLotsOfCells() {
-
-    final List<Boolean> pattern = randomList(400,400 );
-
-    final GameOfLifeSystem gameOfLifeSystem = GameOfLifeSystem.create(
-        Flux.fromIterable(
-            Patterns.cellsFromBits(pattern, PRIMORDIAL_GENERATION, coordinateSystem)),
-        coordinateSystem);
-
-    final int N = 10_000_000;
 
     final Flux<Cell> cells = Flux.from(gameOfLifeSystem.getAllGenerations())
-        .limitRequest(N)
-        .doOnNext(cell -> this.cells.put(coordinateSystem.toOffset(cell.coordinates), cell))
-//        .retryBackoff(10, Duration.ofSeconds(5))
-//        .retry(e->{
-//          System.out.println("retrying because of:\n" + e);
-//          if (e instanceof ServerOperationException) {
-//            final ServerOperationException soe = (ServerOperationException)e;
-//            System.out.println("\n  cause:\n" +soe.getCause());
-//          }
-//          return true;})
-        ;
-
+        .limitRequest(n)
+        .doOnNext(recorder);
     StepVerifier.create(cells)
-        .expectNextCount(N)
+        .expectNextCount(n)
         .verifyComplete();
   }
 
