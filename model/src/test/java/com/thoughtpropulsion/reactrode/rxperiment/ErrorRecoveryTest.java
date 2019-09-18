@@ -4,18 +4,12 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Supplier;
 
-import io.vavr.CheckedFunction0;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.reactivestreams.Publisher;
-import org.w3c.dom.ls.LSOutput;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
-import reactor.test.scheduler.VirtualTimeScheduler;
 import reactor.tools.agent.ReactorDebugAgent;
 
 public class ErrorRecoveryTest {
@@ -25,7 +19,6 @@ public class ErrorRecoveryTest {
 
   @Test
   public void retryResubscribes() {
-
 
     final Flux<Integer> f = Flux.from(publisherWithTransientError())
         .retry(1);
@@ -41,30 +34,15 @@ public class ErrorRecoveryTest {
   @Test
   public void delayElements() {
 
-    // this hangs
-//    StepVerifier
-//        .withVirtualTime(() -> Flux.just(1, 2).delayElements(Duration.ofSeconds(2)))
-//        .expectSubscription()
-//        .then(() -> System.out.println("got subscription"))
-//        .expectNoEvent(Duration.ofSeconds(1))
-//        .then(() -> System.out.println("got event"))
-//        .expectNext(1)
-//        .then(() -> System.out.println("got 1"))
-//        .expectNoEvent(Duration.ofSeconds(1))
-//        .expectNext(2)
-//        .then(() -> System.out.println("got 2"))
-//        .verifyComplete();
-
-    // so we'll use this non-deterministic (and slow) approach for now
     StepVerifier
-        .create(Flux.just(1, 2).delayElements(Duration.ofSeconds(2)))
+        .withVirtualTime(() -> Flux.just(1, 2).delayElements(Duration.ofSeconds(2)))
         .expectSubscription()
         .then(() -> System.out.println("got subscription"))
-        .expectNoEvent(Duration.ofSeconds(1))
+        .expectNoEvent(Duration.ofSeconds(2))
         .then(() -> System.out.println("got event"))
         .expectNext(1)
         .then(() -> System.out.println("got 1"))
-        .expectNoEvent(Duration.ofSeconds(1))
+        .expectNoEvent(Duration.ofSeconds(2))
         .expectNext(2)
         .then(() -> System.out.println("got 2"))
         .verifyComplete();

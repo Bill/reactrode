@@ -10,12 +10,12 @@ import org.springframework.data.gemfire.config.annotation.EnablePdx;
 import org.springframework.data.gemfire.config.annotation.EnableStatistics;
 
 import org.apache.geode.cache.AttributesFactory;
+import org.apache.geode.cache.Cache;
 import org.apache.geode.cache.EvictionAttributes;
-import org.apache.geode.cache.GemFireCache;
 import org.apache.geode.cache.PartitionAttributesFactory;
 
 @CacheServerApplication(name = "AutoConfiguredContinuousQueryIntegrationTests", logLevel = "error",
-    criticalHeapPercentage = 80f, evictionHeapPercentage = 70f)
+    criticalHeapPercentage = 80f, evictionHeapPercentage = 50f)
 @EnablePdx
 @EnableLogging(logLevel = "info", logFile = "/Users/bburcham/Projects/reactrode/geode.log")
 @EnableStatistics(archiveFile = "/Users/bburcham/Projects/reactrode/statistics.gfs")
@@ -61,12 +61,12 @@ public class GeodeServerConfigurationPartitionedRegion {
    eviction does not appear to be, um, evicting.
    */
   @Bean("Cells")
-  public PartitionedRegionFactoryBean<Integer, Cell> cellsRegion(GemFireCache gemfireCache) {
+  public PartitionedRegionFactoryBean<Integer, Cell> cellsRegion(final Cache cache) {
 
     PartitionedRegionFactoryBean<Integer, Cell> factory =
         new PartitionedRegionFactoryBean<>();
 
-    factory.setCache(gemfireCache);
+    factory.setCache(cache);
     factory.setClose(false);
     factory.setPersistent(false);
     factory.setEvictionAttributes(
