@@ -8,7 +8,6 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Consumer;
-import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
 import com.thoughtpropulsion.reactrode.model.Cell;
@@ -19,6 +18,11 @@ import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
 
 import org.apache.geode.cache.Region;
+import org.apache.geode.cache.query.FunctionDomainException;
+import org.apache.geode.cache.query.NameResolutionException;
+import org.apache.geode.cache.query.QueryInvocationTargetException;
+import org.apache.geode.cache.query.SelectResults;
+import org.apache.geode.cache.query.TypeMismatchException;
 
 public class CellOperations {
 
@@ -26,33 +30,39 @@ public class CellOperations {
   static final CoordinateSystem coordinateSystem = new CoordinateSystem(100, 100);
   static final int LIMIT_REQUEST = 3_000_000;
 
-  private CellOperations() {}
-
-  // a higher-order function that takes a cell op function and wraps it in retrying
-  static final UnaryOperator<Consumer<Cell>>
-      withRetry = (final Consumer<Cell> operation) -> (final Cell cell) -> {
-    int attempt = 1;
-    while (true) {
-      try {
-        operation.accept(cell);
-        return;
-      } catch (final Throwable e) {
-        if (attempt >= 3)
-          throw e;
-        else {
-          System.out.println(String.format(
-              "sleeping after attempt %d to put cell %s, due to exception:",
-              attempt, cell, e));
-          e.printStackTrace(System.out);
-          ++attempt;
-        }
-      }
-      try {
-        Thread.sleep(5_000);
-      } catch (InterruptedException _ignored) {
-      }
+  static final Runnable PAUSE_MITIGATION = () -> {
+    try {
+      Thread.sleep(10_000);
+    } catch (InterruptedException _ignored) {
     }
   };
+
+  private CellOperations() {}
+
+  // a higher-order function that takes a consumer op function and wraps it in retrying
+  static <ELEMENT> Consumer<ELEMENT> createRetryConsumer(final Consumer<ELEMENT> operation,
+                                                         final Runnable mitigation) {
+    return (final ELEMENT e) -> {
+      int attempt = 1;
+      while (true) {
+        try {
+          operation.accept(e);
+          return;
+        } catch (final Throwable ex) {
+          if (attempt >= 3) {
+            throw ex;
+          } else {
+            System.out.println(String.format(
+                "running mitigation after attempt %d, because of exception:",
+                attempt, ex));
+            ex.printStackTrace(System.out);
+            ++attempt;
+          }
+        }
+        mitigation.run();
+      }
+    };
+  }
 
   static Consumer<Cell> createPutCellFunction(final Region<Integer,Cell> cellsRegion) {
     return (final Cell cell) -> cellsRegion.put(coordinateSystem.toOffset(cell.coordinates), cell);
@@ -99,6 +109,14 @@ public class CellOperations {
     final long starting = System.nanoTime();
     final AtomicLong firstElementReceived = new AtomicLong();
 
+    final Consumer<Collection<Cell>>
+        bulkCellConsumer =
+        createRetryConsumer(
+            createBulkCellConsumer(cellGemfireTemplate, coordinateSystem, n, firstElementReceived),
+            PAUSE_MITIGATION
+//            createDestroyLRUCellsMitigation(cellGemfireTemplate, coordinateSystem)
+            );
+
     return enforceGenerationFraming(
         Flux.from(source)
             .limitRequest(generations * coordinateSystem.size())
@@ -106,7 +124,7 @@ public class CellOperations {
         coordinateSystem)
 
         .doOnNext(
-            createBulkCellConsumer(cellGemfireTemplate, coordinateSystem, n, firstElementReceived))
+            bulkCellConsumer)
         .doOnTerminate(summarizePerformance(n, starting, firstElementReceived));
   }
 
@@ -197,4 +215,41 @@ public class CellOperations {
       this.k = k; this.v = v;
     }
   }
+
+  static Runnable createDestroyLRUCellsMitigation(
+      final CellGemfireTemplate cellGemfireTemplate,
+      final CoordinateSystem coordinateSystem) {
+    return () -> {
+
+      try {
+        final Region<Integer,Cell> region = cellGemfireTemplate.getRegion();
+        final int GENERATIONS_TO_DESTROY = 10;
+        final SelectResults<Integer> lruKeys = region.query(
+            String.format(
+                "SELECT key "
+                    + "FROM /Cells.entrySet cell, (SELECT MIN(cell.coordinates.generation) FROM /Cells cell) oldestGeneration"
+                    + "WHERE cell.value.coordinates.generation >= oldestGeneration "
+                    + "AND (cell.value.coordinates.generation < oldestGeneration + %d)",
+                GENERATIONS_TO_DESTROY));
+        for (final Integer key:lruKeys) {
+          region.destroy(key);
+        }
+
+        try {
+          Thread.sleep(5000);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      } catch (FunctionDomainException e) {
+        e.printStackTrace();
+      } catch (TypeMismatchException e) {
+        e.printStackTrace();
+      } catch (NameResolutionException e) {
+        e.printStackTrace();
+      } catch (QueryInvocationTargetException e) {
+        e.printStackTrace();
+      }
+    };
+  }
+
 }

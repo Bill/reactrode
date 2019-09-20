@@ -14,8 +14,7 @@ Works with OpenJDK 12 from Oracle and Adopt OpenJDK 12.
 
 ## TODO
 
-* index /Cells on key or cells.coordinates in Geode
-* drive Geode to LowMemoryException (w/ eviction, critical thresholds configured)
+* publishOn(Schedulers.elastic()) before calling blocking APIs
 * start up from generation stored in Geode 
 * feed browsers from Geode CQ-based Flux
 * &hellip; profit!
@@ -35,6 +34,8 @@ Works with OpenJDK 12 from Oracle and Adopt OpenJDK 12.
 * ~~Upgrade to reactor-core 3.3.0.M3~~
 * ~~replace `Hooks.onOperatorDebug()` with `ReactorDebugAgent.init()` x~~
 * ~~add global `dependencyManagement`x~~
+* ~~index /Cells on key or cells.coordinates in Geode~~
+* ~~drive Geode to LowMemoryException (w/ eviction, critical thresholds configured)~~
 
 ## Questions
 

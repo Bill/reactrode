@@ -15,10 +15,10 @@ import org.apache.geode.cache.EvictionAttributes;
 import org.apache.geode.cache.PartitionAttributesFactory;
 
 @CacheServerApplication(name = "AutoConfiguredContinuousQueryIntegrationTests", logLevel = "error",
-    criticalHeapPercentage = 80f, evictionHeapPercentage = 50f)
+    criticalHeapPercentage = 90f, evictionHeapPercentage = 70f)
 @EnablePdx
-@EnableLogging(logLevel = "info", logFile = "/Users/bburcham/Projects/reactrode/geode.log")
-@EnableStatistics(archiveFile = "/Users/bburcham/Projects/reactrode/statistics.gfs")
+@EnableLogging(logLevel = "info", logFile = "/Users/bburcham/Projects/reactrode/recorder/src/test/logs/geode.log")
+@EnableStatistics(archiveFile = "/Users/bburcham/Projects/reactrode/recorder/src/test/logs/statistics.gfs")
 public class GeodeServerConfigurationPartitionedRegion {
 
   public static void main(String[] args) {
@@ -75,13 +75,13 @@ public class GeodeServerConfigurationPartitionedRegion {
          Region allows 1 entry, regardless of criticalHeapPercentage, evictionHeapPercentage
          only cache actions cause eviction
          */
-//        EvictionAttributes.createLRUEntryAttributes(1)
+//        EvictionAttributes.createLRUEntryAttributes(50_000)
 
         /*
          Region allows 1MB-worth of entries, regardless of criticalHeapPercentage, evictionHeapPercentage
          only cache actions cause eviction
          */
-//        EvictionAttributes.createLRUMemoryAttributes(1)  // region allows 1MB-worth of entries
+//        EvictionAttributes.createLRUMemoryAttributes(10)
 
         /*
          Region grows until evictionHeapPercentage is reached, then TBD elements are evicted
@@ -93,8 +93,14 @@ public class GeodeServerConfigurationPartitionedRegion {
 
     final AttributesFactory attributesFactory = new AttributesFactory();
 
+    /*
+     Without this setting, eviction does not keep pace with puts to the partitioned region.
+     NB this is not needed for a replicated region.
+     */
+    attributesFactory.setConcurrencyChecksEnabled(false);
+
     attributesFactory.setPartitionAttributes(
-        new PartitionAttributesFactory().setTotalNumBuckets(1).create());
+        new PartitionAttributesFactory().setTotalNumBuckets(1).setRedundantCopies(0).create());
 
     factory.setAttributes(attributesFactory.create());
 

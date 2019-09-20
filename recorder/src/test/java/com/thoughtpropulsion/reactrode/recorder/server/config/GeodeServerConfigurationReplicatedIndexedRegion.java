@@ -3,12 +3,16 @@ package com.thoughtpropulsion.reactrode.recorder.server.config;
 import com.thoughtpropulsion.reactrode.model.Cell;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
+import org.springframework.data.gemfire.IndexFactoryBean;
+import org.springframework.data.gemfire.IndexType;
 import org.springframework.data.gemfire.ReplicatedRegionFactoryBean;
 import org.springframework.data.gemfire.config.annotation.CacheServerApplication;
+import org.springframework.data.gemfire.config.annotation.EnableGemFireProperties;
 import org.springframework.data.gemfire.config.annotation.EnableLogging;
 import org.springframework.data.gemfire.config.annotation.EnablePdx;
 import org.springframework.data.gemfire.config.annotation.EnableStatistics;
 
+import org.apache.geode.cache.Cache;
 import org.apache.geode.cache.EvictionAttributes;
 import org.apache.geode.cache.GemFireCache;
 
@@ -18,14 +22,17 @@ import org.apache.geode.cache.GemFireCache;
 @EnablePdx
 @EnableLogging(logLevel = "info", logFile = "/Users/bburcham/Projects/reactrode/recorder/src/test/logs/geode.log")
 @EnableStatistics(archiveFile = "/Users/bburcham/Projects/reactrode/recorder/src/test/logs/statistics.gfs")
-public class GeodeServerConfigurationReplicatedRegion {
+public class GeodeServerConfigurationReplicatedIndexedRegion {
 
   public static void main(String[] args) {
     System.out.println("Geode Server using Java version: " + System.getProperty("java.version") );
 
+    // so that createDestroyLRUCellsMitigation can query when we are past evictionHeapPercentage
+    System.setProperty("gemfire.cache.DISABLE_QUERY_MONITOR_FOR_LOW_MEMORY", "true");
+
     AnnotationConfigApplicationContext applicationContext =
         new AnnotationConfigApplicationContext(
-            GeodeServerConfigurationReplicatedRegion.class);
+            GeodeServerConfigurationReplicatedIndexedRegion.class);
 
     applicationContext.registerShutdownHook();
   }
@@ -94,4 +101,19 @@ public class GeodeServerConfigurationReplicatedRegion {
 
     return factory;
   }
+
+  @Bean("CellsGenerationIndex")
+  IndexFactoryBean cellsGenerationIndex(final Cache cache) {
+
+    final IndexFactoryBean cellsGenerationIndex = new IndexFactoryBean();
+
+    cellsGenerationIndex.setCache(cache);
+    cellsGenerationIndex.setName("CellsGenerationIndex");
+    cellsGenerationIndex.setExpression("coordinates.generation");
+    cellsGenerationIndex.setFrom("/Cells");
+    cellsGenerationIndex.setType(IndexType.FUNCTIONAL);
+
+    return cellsGenerationIndex;
+  }
+
 }

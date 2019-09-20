@@ -19,6 +19,15 @@ public class CellTesting {
 
   static void recordCellsAndVerify(final CellGemfireTemplate cellsTemplate, final int generations) {
 
+    final Publisher<List<Cell>> cells = getCellsPublisher(cellsTemplate, generations);
+
+    StepVerifier.create(cells)
+        .expectNextCount(generations)
+        .verifyComplete();
+  }
+
+  private static Publisher<List<Cell>> getCellsPublisher(final CellGemfireTemplate cellsTemplate,
+                                                         final int generations) {
     final List<Boolean> pattern = randomList(CellOperations.coordinateSystem);
 
     final GameOfLifeSystem gameOfLifeSystem = GameOfLifeSystem.create(
@@ -26,12 +35,10 @@ public class CellTesting {
             Patterns.cellsFromBits(pattern, CellOperations.PRIMORDIAL_GENERATION, CellOperations.coordinateSystem)),
         CellOperations.coordinateSystem);
 
-    final Publisher<List<Cell>> cells = Flux.from(
+    return Flux.from(
         CellOperations.createSerialBulkPutPublisher(cellsTemplate, CellOperations.coordinateSystem,
             gameOfLifeSystem.getAllGenerations(), generations));
-
-    StepVerifier.create(cells)
-        .expectNextCount(generations)
-        .verifyComplete();
   }
+
+
 }
