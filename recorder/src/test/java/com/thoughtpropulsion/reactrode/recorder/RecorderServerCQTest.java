@@ -7,11 +7,11 @@ import java.io.IOException;
 
 import javax.annotation.Resource;
 
+import com.thoughtpropulsion.reactrode.geodeconfig.GeodeServerConfigurationAutoEvictionAndCQ;
 import com.thoughtpropulsion.reactrode.model.Cell;
 import com.thoughtpropulsion.reactrode.model.CoordinateSystem;
 import com.thoughtpropulsion.reactrode.model.Coordinates;
 import com.thoughtpropulsion.reactrode.recorder.server.RecorderServer;
-import com.thoughtpropulsion.reactrode.recorder.server.config.GeodeServerConfigurationPartitionedRegion;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -49,7 +49,7 @@ public class RecorderServerCQTest extends
 
   @BeforeClass
   public static void startGeodeServer() throws IOException {
-    startGemFireServer(GeodeServerConfigurationPartitionedRegion.class, "-Xmx100m", "-Xms100m");
+    startGemFireServer(GeodeServerConfigurationAutoEvictionAndCQ.class, "-Xmx100m", "-Xms100m");
   }
 
   @Autowired

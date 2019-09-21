@@ -31,6 +31,8 @@ dependencies {
 //        exclude(group="org.apache.logging.log4j", module=   "log4j-core")
     }
 
+    testImplementation(project(":geodeconfig"))
+
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("org.junit.jupiter:junit-jupiter-params")
     testImplementation("org.assertj:assertj-core")

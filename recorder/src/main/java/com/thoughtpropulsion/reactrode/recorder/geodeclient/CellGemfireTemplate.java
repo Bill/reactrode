@@ -1,13 +1,15 @@
-package com.thoughtpropulsion.reactrode.recorder.gemfireTemplate;
+package com.thoughtpropulsion.reactrode.recorder.geodeclient;
 
 import com.thoughtpropulsion.reactrode.model.Cell;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.annotation.Primary;
 import org.springframework.data.gemfire.GemfireTemplate;
 import org.springframework.stereotype.Component;
 
 import org.apache.geode.cache.Region;
 
 @Component
+@Primary
 public class CellGemfireTemplate extends GemfireTemplate {
     public CellGemfireTemplate(@Qualifier("Cells") final Region<Long, Cell> region) {
     super(region);

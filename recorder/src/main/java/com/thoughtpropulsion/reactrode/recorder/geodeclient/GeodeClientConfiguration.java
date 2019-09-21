@@ -1,7 +1,6 @@
-package com.thoughtpropulsion.reactrode.recorder.config;
+package com.thoughtpropulsion.reactrode.recorder.geodeclient;
 
 import com.thoughtpropulsion.reactrode.model.Cell;
-import com.thoughtpropulsion.reactrode.recorder.gemfireTemplate.CellGemfireTemplate;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -11,8 +10,7 @@ import org.apache.geode.cache.GemFireCache;
 import org.apache.geode.cache.client.ClientRegionShortcut;
 
 @Configuration
-@ComponentScan(basePackageClasses = CellGemfireTemplate.class)
-public class GeodeConfiguration {
+public class GeodeClientConfiguration {
   @Bean("Cells")
   public ClientRegionFactoryBean getCellsRegion(GemFireCache gemfireCache) {
     ClientRegionFactoryBean<Long, Cell> cellRegionFactoryBean = new ClientRegionFactoryBean<>();

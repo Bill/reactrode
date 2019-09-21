@@ -18,6 +18,7 @@ dependencies {
     implementation(enforcedPlatform(project(":bom")))
 
     implementation(project(":model"))
+    implementation(project(":geodeconfig"))
 
     implementation("org.springframework.geode:spring-geode-starter")
 
@@ -26,6 +27,7 @@ dependencies {
     testImplementation("org.assertj:assertj-core")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("io.projectreactor:reactor-test")
     testImplementation("org.springframework.data:spring-data-geode-test")
 
     developmentOnly("org.springframework.boot:spring-boot-devtools")

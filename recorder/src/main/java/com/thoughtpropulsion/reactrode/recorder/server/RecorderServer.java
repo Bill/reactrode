@@ -43,7 +43,10 @@ public class RecorderServer {
 
   @MessageMapping("/rsocket/all-generations")
   public Publisher<Cell> allGenerations(final Coordinates _ignored) {
-    return getCellPublisher("select * from /Cells");
+    return getCellPublisher(String.format(
+        "SELECT cell.* "
+            + "FROM /Cells cell, (SELECT MIN(cell.coordinates.generation) + 1 FROM /Cells cell) oldestGeneration"
+            + "WHERE cell.value.coordinates.generation >= oldestGeneration"));
   }
 
   private Publisher<Cell> getCellPublisher(final String query) {

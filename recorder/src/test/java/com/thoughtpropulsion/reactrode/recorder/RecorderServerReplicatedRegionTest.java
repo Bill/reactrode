@@ -2,10 +2,9 @@ package com.thoughtpropulsion.reactrode.recorder;
 
 import java.io.IOException;
 
+import com.thoughtpropulsion.reactrode.geodeconfig.GeodeServerConfigurationAutoEvictionAndCQ;
 import com.thoughtpropulsion.reactrode.model.Cell;
-import com.thoughtpropulsion.reactrode.recorder.gemfireTemplate.CellGemfireTemplate;
-import com.thoughtpropulsion.reactrode.recorder.server.config.GeodeServerConfigurationPartitionedRegion;
-import com.thoughtpropulsion.reactrode.recorder.server.config.GeodeServerConfigurationReplicatedIndexedRegion;
+import com.thoughtpropulsion.reactrode.recorder.geodeclient.CellGemfireTemplate;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -33,29 +32,18 @@ public class RecorderServerReplicatedRegionTest extends
 
   @BeforeClass
   public static void startGeodeServer() throws IOException {
-    startGemFireServer(GeodeServerConfigurationPartitionedRegion.class,
-        "-Xmx200m", "-Xms200m",
+    startGemFireServer(GeodeServerConfigurationAutoEvictionAndCQ.class,
+        "-Xmx100m", "-Xms100m",
         // While OpenJDK 12 defaults to G1GC now, Geode 1.9 doc says use CMS
-        "‑XX:+UseConcMarkSweepGC", "‑XX:CMSInitiatingOccupancyFraction=60"/*,
-        "-Dgemfire.Cache.DISABLE_QUERY_MONITOR_FOR_LOW_MEMORY=true"*/);
+        "‑XX:+UseConcMarkSweepGC", "‑XX:CMSInitiatingOccupancyFraction=60");
   }
 
   @Autowired
-  private CellGemfireTemplate cellsTemplate;
+  private GemfireTemplate cellsTemplate;
 
   @Test
   public void recordCellsTest() {
-    CellTesting.recordCellsAndVerify(cellsTemplate, 400);
-  }
-
-  @Test
-  public void recordLotsOfCellsWithRetryOnExceptionTest() {
-//    recordCells(CellOperations.withRetry.apply(CellOperations.createPutCellFunction(cells)), 1_000_000);
-  }
-
-  @Test
-  public void recordAndPlayBackTest() {
-
+    CellTesting.recordCellsAndVerify(cellsTemplate, 100);
   }
 
   @ClientCacheApplication

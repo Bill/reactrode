@@ -7,8 +7,8 @@ import java.util.List;
 import com.thoughtpropulsion.reactrode.model.Cell;
 import com.thoughtpropulsion.reactrode.model.GameOfLifeSystem;
 import com.thoughtpropulsion.reactrode.model.Patterns;
-import com.thoughtpropulsion.reactrode.recorder.gemfireTemplate.CellGemfireTemplate;
 import org.reactivestreams.Publisher;
+import org.springframework.data.gemfire.GemfireTemplate;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
@@ -17,16 +17,16 @@ public class CellTesting {
   private CellTesting() {}
 
 
-  static void recordCellsAndVerify(final CellGemfireTemplate cellsTemplate, final int generations) {
+  static void recordCellsAndVerify(final GemfireTemplate template, final int generations) {
 
-    final Publisher<List<Cell>> cells = getCellsPublisher(cellsTemplate, generations);
+    final Publisher<List<Cell>> cells = getCellsPublisher(template, generations);
 
     StepVerifier.create(cells)
         .expectNextCount(generations)
         .verifyComplete();
   }
 
-  private static Publisher<List<Cell>> getCellsPublisher(final CellGemfireTemplate cellsTemplate,
+  private static Publisher<List<Cell>> getCellsPublisher(final GemfireTemplate template,
                                                          final int generations) {
     final List<Boolean> pattern = randomList(CellOperations.coordinateSystem);
 
@@ -36,7 +36,7 @@ public class CellTesting {
         CellOperations.coordinateSystem);
 
     return Flux.from(
-        CellOperations.createSerialBulkPutPublisher(cellsTemplate, CellOperations.coordinateSystem,
+        CellOperations.createSerialBulkPutPublisher(template, CellOperations.coordinateSystem,
             gameOfLifeSystem.getAllGenerations(), generations));
   }
 

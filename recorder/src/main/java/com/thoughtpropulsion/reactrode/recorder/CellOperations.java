@@ -12,8 +12,8 @@ import java.util.stream.Collectors;
 
 import com.thoughtpropulsion.reactrode.model.Cell;
 import com.thoughtpropulsion.reactrode.model.CoordinateSystem;
-import com.thoughtpropulsion.reactrode.recorder.gemfireTemplate.CellGemfireTemplate;
 import org.reactivestreams.Publisher;
+import org.springframework.data.gemfire.GemfireTemplate;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
 
@@ -28,7 +28,7 @@ public class CellOperations {
 
   static final int PRIMORDIAL_GENERATION = -1;
   static final CoordinateSystem coordinateSystem = new CoordinateSystem(100, 100);
-  static final int LIMIT_REQUEST = 3_000_000;
+  static final int LIMIT_REQUEST = 100 * coordinateSystem.size();
 
   static final Runnable PAUSE_MITIGATION = () -> {
     try {
@@ -68,9 +68,9 @@ public class CellOperations {
     return (final Cell cell) -> cellsRegion.put(coordinateSystem.toOffset(cell.coordinates), cell);
   }
 
-  private static Publisher<Cell> createSerialPutPublisher(final CellGemfireTemplate cellGemfireTemplate,
-                                                     final CoordinateSystem coordinateSystem,
-                                                     final Publisher<Cell> source) {
+  private static Publisher<Cell> createSerialPutPublisher(final GemfireTemplate template,
+                                                          final CoordinateSystem coordinateSystem,
+                                                          final Publisher<Cell> source) {
 
     final LongAdder n = new LongAdder();
     final long starting = System.nanoTime();
@@ -79,12 +79,12 @@ public class CellOperations {
     return Flux.from(source)
         .limitRequest(LIMIT_REQUEST)
         .doOnNext(
-            createSingleCellConsumer(cellGemfireTemplate, coordinateSystem, n, firstElementReceived))
+            createSingleCellConsumer(template, coordinateSystem, n, firstElementReceived))
         .doOnTerminate(summarizePerformance(n, starting, firstElementReceived));
   }
 
   private static Publisher<Cell> createParallelPutPublisher(
-      final CellGemfireTemplate cellGemfireTemplate, final CoordinateSystem coordinateSystem,
+      final GemfireTemplate template, final CoordinateSystem coordinateSystem,
       final Publisher<Cell> source, final int parallelism) {
 
     final LongAdder n = new LongAdder();
@@ -96,13 +96,13 @@ public class CellOperations {
         .parallel(parallelism)
         .runOn(Schedulers.elastic())
         .doOnNext(
-            createSingleCellConsumer(cellGemfireTemplate, coordinateSystem, n, firstElementReceived))
+            createSingleCellConsumer(template, coordinateSystem, n, firstElementReceived))
         .doOnTerminate(summarizePerformance(n, starting, firstElementReceived))
         .sequential();
   }
 
   static Publisher<List<Cell>> createSerialBulkPutPublisher(
-      final CellGemfireTemplate cellGemfireTemplate, final CoordinateSystem coordinateSystem,
+      final GemfireTemplate template, final CoordinateSystem coordinateSystem,
       final Publisher<Cell> source, final int generations) {
 
     final LongAdder n = new LongAdder();
@@ -112,7 +112,7 @@ public class CellOperations {
     final Consumer<Collection<Cell>>
         bulkCellConsumer =
         createRetryConsumer(
-            createBulkCellConsumer(cellGemfireTemplate, coordinateSystem, n, firstElementReceived),
+            createBulkCellConsumer(template, coordinateSystem, n, firstElementReceived),
             PAUSE_MITIGATION
 //            createDestroyLRUCellsMitigation(cellGemfireTemplate, coordinateSystem)
             );
@@ -129,7 +129,7 @@ public class CellOperations {
   }
 
   private static Publisher<List<Cell>> createParallelBulkPutPublisher(
-      final CellGemfireTemplate cellGemfireTemplate,
+      final GemfireTemplate template,
       final CoordinateSystem coordinateSystem,
       final Publisher<Cell> source,
       final int parallelism) {
@@ -147,12 +147,12 @@ public class CellOperations {
         .parallel(parallelism)
         .runOn(Schedulers.elastic())
         .doOnNext(
-            createBulkCellConsumer(cellGemfireTemplate, coordinateSystem, n, firstElementReceived))
+            createBulkCellConsumer(template, coordinateSystem, n, firstElementReceived))
         .doOnTerminate(summarizePerformance(n, starting, firstElementReceived))
         .sequential();
   }
 
-  private static Consumer<Cell> createSingleCellConsumer(final CellGemfireTemplate cellGemfireTemplate,
+  private static Consumer<Cell> createSingleCellConsumer(final GemfireTemplate template,
                                                          final CoordinateSystem coordinateSystem,
                                                          final LongAdder n,
                                                          final AtomicLong firstElementReceived) {
@@ -162,7 +162,7 @@ public class CellOperations {
       }
       n.increment();
       try {
-        cellGemfireTemplate.put(coordinateSystem.toOffset(cell.coordinates), cell);
+        template.put(coordinateSystem.toOffset(cell.coordinates), cell);
       } catch (final Exception e) {
         System.out.println("for cell" + cell);
         e.printStackTrace();
@@ -171,7 +171,7 @@ public class CellOperations {
     };
   }
 
-  private static Consumer<Collection<Cell>> createBulkCellConsumer(final CellGemfireTemplate cellGemfireTemplate,
+  private static Consumer<Collection<Cell>> createBulkCellConsumer(final GemfireTemplate template,
                                                                    final CoordinateSystem coordinateSystem,
                                                                    final LongAdder n,
                                                                    final AtomicLong firstElementReceived) {
@@ -184,7 +184,7 @@ public class CellOperations {
           return new Pair<>(key, cell);
         }).collect(Collectors.toMap(pair -> pair.k, pair -> pair.v));
         n.add(entries.size());
-        cellGemfireTemplate.putAll(entries);
+        template.putAll(entries);
       } catch (final Exception e) {
         e.printStackTrace();
         throw e;
@@ -217,12 +217,12 @@ public class CellOperations {
   }
 
   static Runnable createDestroyLRUCellsMitigation(
-      final CellGemfireTemplate cellGemfireTemplate,
+      final GemfireTemplate template,
       final CoordinateSystem coordinateSystem) {
     return () -> {
 
       try {
-        final Region<Integer,Cell> region = cellGemfireTemplate.getRegion();
+        final Region<Integer,Cell> region = template.getRegion();
         final int GENERATIONS_TO_DESTROY = 10;
         final SelectResults<Integer> lruKeys = region.query(
             String.format(
