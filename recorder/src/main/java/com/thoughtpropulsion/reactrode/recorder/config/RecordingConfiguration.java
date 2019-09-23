@@ -3,7 +3,6 @@ package com.thoughtpropulsion.reactrode.recorder.config;
 import static org.springframework.messaging.rsocket.MetadataExtractor.ROUTING;
 
 import java.net.URI;
-import java.time.Duration;
 
 import com.thoughtpropulsion.reactrode.recorder.server.RecorderServer;
 import com.thoughtpropulsion.reactrode.recorder.subscriber.RecordingSubscriber;

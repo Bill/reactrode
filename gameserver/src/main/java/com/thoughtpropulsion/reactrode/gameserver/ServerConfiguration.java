@@ -1,4 +1,4 @@
-package com.thoughtpropulsion.reactrode.server;
+package com.thoughtpropulsion.reactrode.gameserver;
 
 import static com.thoughtpropulsion.reactrode.model.Patterns.pufferfishSpaceshipPattern;
 

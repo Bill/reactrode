@@ -3,11 +3,14 @@ package com.thoughtpropulsion.reactrode.recorder;
 import static com.thoughtpropulsion.reactrode.model.GameOfLife.enforceGenerationFraming;
 
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 import com.thoughtpropulsion.reactrode.model.Cell;
@@ -179,10 +182,10 @@ public class CellOperations {
       if (firstElementReceived.get() == 0)
         firstElementReceived.set(System.nanoTime());
       try {
-        final Map<Long, Cell> entries = cells.stream().map(cell -> {
-          final long key = coordinateSystem.toOffset(cell.coordinates);
+        final Map<Integer, Cell> entries = cells.stream().map(cell -> {
+          final int key = coordinateSystem.toOffset(cell.coordinates);
           return new Pair<>(key, cell);
-        }).collect(Collectors.toMap(pair -> pair.k, pair -> pair.v));
+        }).collect(toLinkedMap(pair -> pair.k, pair -> pair.v));
         n.add(entries.size());
         template.putAll(entries);
       } catch (final Exception e) {
@@ -190,6 +193,23 @@ public class CellOperations {
         throw e;
       }
     };
+  }
+
+  /*
+   Collect to a LinkedHashMap so that iteration order will be the same as insertion order.
+   */
+  public static <T, K, U> Collector<T, ?, Map<K,U>> toLinkedMap(
+      Function<? super T, ? extends K> keyMapper,
+      Function<? super T, ? extends U> valueMapper)
+  {
+    return Collectors.toMap(
+        keyMapper,
+        valueMapper,
+        (u, v) -> {
+          throw new IllegalStateException(String.format("Duplicate key %s", u));
+        },
+        LinkedHashMap::new
+    );
   }
 
   private static Runnable summarizePerformance(final LongAdder n, final long starting,
@@ -231,15 +251,16 @@ public class CellOperations {
                     + "WHERE cell.value.coordinates.generation >= oldestGeneration "
                     + "AND (cell.value.coordinates.generation < oldestGeneration + %d)",
                 GENERATIONS_TO_DESTROY));
-        for (final Integer key:lruKeys) {
-          region.destroy(key);
-        }
 
+        region.removeAll(lruKeys);
+
+        // Now wait a while for GC to recover space we just freed up
         try {
           Thread.sleep(5000);
         } catch (InterruptedException e) {
           e.printStackTrace();
         }
+
       } catch (FunctionDomainException e) {
         e.printStackTrace();
       } catch (TypeMismatchException e) {

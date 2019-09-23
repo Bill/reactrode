@@ -1,4 +1,4 @@
-package com.thoughtpropulsion.reactrode.server;
+package com.thoughtpropulsion.reactrode.gameserver;
 
 import com.thoughtpropulsion.reactrode.model.Cell;
 import com.thoughtpropulsion.reactrode.model.Coordinates;
@@ -7,7 +7,6 @@ import org.reactivestreams.Publisher;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.stereotype.Controller;
 import reactor.core.publisher.Flux;
-import reactor.core.scheduler.Schedulers;
 
 @Controller
 public class LifeServer {

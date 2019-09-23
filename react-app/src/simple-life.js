@@ -12,6 +12,11 @@ var subscription; // to support re-requesting
 var requested = 0;
 var frameStartTime = new Date();
 
+function makeRequest() {
+    requested = frameSize;
+    subscription.request(requested);
+}
+
 rSocketClient.connect().subscribe(
     {
         onComplete: socket => {
@@ -25,22 +30,22 @@ rSocketClient.connect().subscribe(
                         onComplete: () => console.log('all-generations done'),
                         onError: error => console.error(error),
                         onNext: cell => {
+                            // console.log(`got cell`);
+                            // console.log(cell);
                             let row = cell.data.coordinates.y;
                             let col = cell.data.coordinates.x;
                             board[row][col] = cell.data.isAlive;
                             if (--requested === 0) {
                                 draw();
-                                requested = frameSize;
-                                subscription.request(requested);
+                                makeRequest();
                                 updateStatistics(cell.data.coordinates.generation);
                             }
                         },
                         // Nothing happens until `request(n)` is called
                         onSubscribe: sub => {
-                            console.log(`onSubscribe() requesting ${frameSize}`)
                             subscription = sub;
-                            requested = frameSize;
-                            subscription.request(requested);
+                            makeRequest();
+                            console.log(`onSubscribe() requested ${frameSize}`)
                         },
                     }
                 )

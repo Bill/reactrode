@@ -1,4 +1,4 @@
-package com.thoughtpropulsion.reactrode.server;
+package com.thoughtpropulsion.reactrode.gameserver;
 
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
