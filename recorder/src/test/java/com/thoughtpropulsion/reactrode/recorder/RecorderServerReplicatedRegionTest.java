@@ -7,6 +7,7 @@ import com.thoughtpropulsion.reactrode.model.Cell;
 import com.thoughtpropulsion.reactrode.recorder.geodeclient.CellGemfireTemplate;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.jupiter.api.Disabled;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -21,6 +22,8 @@ import org.springframework.test.context.junit4.SpringRunner;
 
 import org.apache.geode.cache.GemFireCache;
 import org.apache.geode.cache.client.ClientRegionShortcut;
+import org.apache.geode.cache.query.SelectResults;
+import org.apache.geode.cache.query.Struct;
 
 @RunWith(SpringRunner.class)
 //@ContextConfiguration(classes =RecorderServerTest.GeodeClientConfiguration.class)
@@ -44,6 +47,29 @@ public class RecorderServerReplicatedRegionTest extends
   @Test
   public void recordCellsTest() {
     CellTesting.recordCellsAndVerify(cellsTemplate, 100);
+  }
+
+  @Test
+  @Disabled
+  public void queryTest() {
+    CellTesting.recordCellsAndVerify(cellsTemplate, 1);
+    final String q = "SELECT * from /Cells";
+    final SelectResults<Cell> results = cellsTemplate.query(q);
+    for(final Cell cell : results) {
+      System.out.println(cell);
+    }
+  }
+
+  @Test
+  @Disabled
+  public void queryOrderByTest() {
+    CellTesting.recordCellsAndVerify(cellsTemplate, 1);
+    // to order by key, key must appear in projection
+    final String q = "SELECT key,value from /Cells.entries ORDER BY key";
+    final SelectResults<Struct> results = cellsTemplate.query(q);
+    for(final Struct s : results) {
+      System.out.println((Cell)s.get("value"));
+    }
   }
 
   @ClientCacheApplication

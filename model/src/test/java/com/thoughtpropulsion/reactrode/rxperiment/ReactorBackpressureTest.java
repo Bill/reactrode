@@ -44,7 +44,7 @@ class ReactorBackpressureTest {
 
   /**
    * Consume {@param intFlux} asynchronously. Delegate to {@link #calculateRequest()} to
-   * determine {@link Subscription#request(long)} count (backpressure). This can causes
+   * determine {@link Subscription#request(long)} count (backpressure). This can cause
    * processing to completely stop when {@code storage.size()} grows larger than {#code CAPACITY}.
    * Processing is resumed later by (externally) reducing {@code storage.size()}
    * e.g. via {@code storage.remove()} and then calling {@link Subscription#request(long)}.

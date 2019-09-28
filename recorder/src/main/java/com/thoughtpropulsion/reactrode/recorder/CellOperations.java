@@ -112,6 +112,10 @@ public class CellOperations {
     final long starting = System.nanoTime();
     final AtomicLong firstElementReceived = new AtomicLong();
 
+    /*
+    TODO: it would be nice to factor the retying (and mitigation) up out of this method)
+          so it could be applied to all the other createXXXPublisher methods
+     */
     final Consumer<Collection<Cell>>
         bulkCellConsumer =
         createRetryConsumer(
@@ -120,12 +124,10 @@ public class CellOperations {
 //            createDestroyLRUCellsMitigation(cellGemfireTemplate, coordinateSystem)
             );
 
-    return enforceGenerationFraming(
-        Flux.from(source)
-            .limitRequest(generations * coordinateSystem.size())
-            .buffer(coordinateSystem.size()),
-        coordinateSystem)
-
+    return Flux.from(source)
+        .subscribeOn(Schedulers.elastic()) // since we'll do blocking ops downstream
+        .limitRequest(generations * coordinateSystem.size())
+        .buffer(coordinateSystem.size())
         .doOnNext(
             bulkCellConsumer)
         .doOnTerminate(summarizePerformance(n, starting, firstElementReceived));

@@ -35,9 +35,8 @@ public class CellTesting {
             Patterns.cellsFromBits(pattern, CellOperations.PRIMORDIAL_GENERATION, CellOperations.coordinateSystem)),
         CellOperations.coordinateSystem);
 
-    return Flux.from(
-        CellOperations.createSerialBulkPutPublisher(template, CellOperations.coordinateSystem,
-            gameOfLifeSystem.getAllGenerations(), generations));
+    return CellOperations.createSerialBulkPutPublisher(template, CellOperations.coordinateSystem,
+            gameOfLifeSystem.getAllGenerations(), generations);
   }
 
 

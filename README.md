@@ -14,28 +14,10 @@ Works with OpenJDK 12 from Oracle and Adopt OpenJDK 12.
 
 ## TODO
 
-* publishOn(Schedulers.elastic()) before calling blocking APIs
-* start up from generation stored in Geode 
-* feed browsers from Geode CQ-based Flux
-* &hellip; profit!
-* upgrade RSocket to 1.0.0-RC2 or newer
 * enable BlockHound https://github.com/reactor/BlockHound
-* port from `.gradle.kts` to `pom.xml`?
+* upgrade RSocket to 1.0.0-RC2 or newer
 * side project: figure out how to make `Mono<Cell> put(final Mono<Cell> cellMono)` work analogously to its Flux counterpart
 * remove dependency on org.springframework.data:spring-data-commons in model module (necessary to make spring-data-geode serialization work)
-* ~~make server serve websocket (not tcp)~~
-* ~~make server listen on a well-known port (not an ephemeral one!)~~
-* ~~make browser visualiation render first frame~~
-* ~~make browser visualization render multiple frames~~
-* ~~upgrade to latest Spring Boot (2.2.0.M5 as of 8/6/2019)~~
-* ~~connect Geode client (recorder) downstream~~
-* ~~cursory performance tuning~~
-* ~~drive Geode to OOM error~~
-* ~~Upgrade to reactor-core 3.3.0.M3~~
-* ~~replace `Hooks.onOperatorDebug()` with `ReactorDebugAgent.init()` x~~
-* ~~add global `dependencyManagement`x~~
-* ~~index /Cells on key or cells.coordinates in Geode~~
-* ~~drive Geode to LowMemoryException (w/ eviction, critical thresholds configured)~~
 
 ## Questions
 
