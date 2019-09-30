@@ -29,7 +29,7 @@ import org.apache.geode.cache.GemFireCache;
 @EnablePdx
 @EnableLogging(logLevel = "info", logFile = "/Users/bburcham/Projects/reactrode/recorder/src/test/logs/geode.log")
 @EnableStatistics(archiveFile = "/Users/bburcham/Projects/reactrode/recorder/src/test/logs/statistics.gfs")
-public class GeodeServerConfigurationManualEvictionAndCQ {
+public class GeodeTestServerConfigurationManualEvictionAndCQ {
 
   public static void main(String[] args) {
     System.out.println("Geode Server using Java version: " + System.getProperty("java.version") );
@@ -39,7 +39,7 @@ public class GeodeServerConfigurationManualEvictionAndCQ {
 
     AnnotationConfigApplicationContext applicationContext =
         new AnnotationConfigApplicationContext(
-            GeodeServerConfigurationManualEvictionAndCQ.class);
+            GeodeTestServerConfigurationManualEvictionAndCQ.class);
 
     applicationContext.registerShutdownHook();
   }

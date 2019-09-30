@@ -41,6 +41,8 @@ dependencies {
     testImplementation("io.projectreactor:reactor-test")
     testImplementation("org.springframework.data:spring-data-geode-test")
 
+    testImplementation("io.projectreactor.tools:blockhound:1.0.0.RC1")
+
     developmentOnly("org.springframework.boot:spring-boot-devtools")
 }
 

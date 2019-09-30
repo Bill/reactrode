@@ -20,18 +20,24 @@ import org.apache.geode.cache.GemFireCache;
  */
 
 @CacheServerApplication(name = "AutoConfiguredContinuousQueryIntegrationTests", logLevel = "error",
+    // FRAGILE
+//    criticalHeapPercentage = 75f, evictionHeapPercentage = 70f)
+
+    // ROBUST-ISH
     criticalHeapPercentage = 90f, evictionHeapPercentage = 70f)
+
+
 @EnablePdx
 @EnableLogging(logLevel = "info", logFile = "/Users/bburcham/Projects/reactrode/recorder/src/test/logs/geode.log")
-@EnableStatistics(archiveFile = "/Users/bburcham/Projects/reactrode/recorder/src/test/logs/statistics.gfs")
-public class GeodeServerConfigurationAutoEvictionNoCQ {
+//@EnableStatistics(archiveFile = "/Users/bburcham/Projects/reactrode/recorder/src/test/logs/statistics.gfs")
+public class GeodeTestServerConfigurationAutoEvictionNoCQ {
 
   public static void main(String[] args) {
     System.out.println("Geode Server using Java version: " + System.getProperty("java.version") );
 
     AnnotationConfigApplicationContext applicationContext =
         new AnnotationConfigApplicationContext(
-            GeodeServerConfigurationAutoEvictionNoCQ.class);
+            GeodeTestServerConfigurationAutoEvictionNoCQ.class);
 
     applicationContext.registerShutdownHook();
   }

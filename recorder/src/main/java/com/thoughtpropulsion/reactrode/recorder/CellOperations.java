@@ -1,7 +1,5 @@
 package com.thoughtpropulsion.reactrode.recorder;
 
-import static com.thoughtpropulsion.reactrode.model.GameOfLife.enforceGenerationFraming;
-
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -31,10 +29,14 @@ public class CellOperations {
 
   static final int PRIMORDIAL_GENERATION = -1;
   static final CoordinateSystem coordinateSystem = new CoordinateSystem(100, 100);
-  static final int LIMIT_REQUEST = 100 * coordinateSystem.size();
+
+  public static final Runnable NO_MITIGATION = () -> {
+    System.out.println("\nNo-op mitigation--expect failure\n");
+  };
 
   static final Runnable PAUSE_MITIGATION = () -> {
     try {
+      System.out.println("\nPause mitigation: sleeping for 10 seconds...\n");
       Thread.sleep(10_000);
     } catch (InterruptedException _ignored) {
     }
@@ -56,9 +58,9 @@ public class CellOperations {
             throw ex;
           } else {
             System.out.println(String.format(
-                "running mitigation after attempt %d, because of exception:",
-                attempt, ex));
-            ex.printStackTrace(System.out);
+                "running mitigation after attempt %d, because of exception %s caused by %s",
+                attempt, ex, ex.getCause()));
+//            ex.printStackTrace(System.out);
             ++attempt;
           }
         }
@@ -71,37 +73,42 @@ public class CellOperations {
     return (final Cell cell) -> cellsRegion.put(coordinateSystem.toOffset(cell.coordinates), cell);
   }
 
-  private static Publisher<Cell> createSerialPutPublisher(final GemfireTemplate template,
-                                                          final CoordinateSystem coordinateSystem,
-                                                          final Publisher<Cell> source) {
+  static Publisher<Cell> createSerialPutPublisher(final GemfireTemplate template,
+                                                  final CoordinateSystem coordinateSystem,
+                                                  final Publisher<Cell> source,
+                                                  final int n) {
 
-    final LongAdder n = new LongAdder();
+    final LongAdder seen = new LongAdder();
     final long starting = System.nanoTime();
     final AtomicLong firstElementReceived = new AtomicLong();
 
     return Flux.from(source)
-        .limitRequest(LIMIT_REQUEST)
+        .limitRequest(n)
+        .publishOn(Schedulers.parallel()) // uncomment to demonstrate BlockHound
+//        .publishOn(Schedulers.elastic()) // uncomment to satisfy BlockHound
         .doOnNext(
-            createSingleCellConsumer(template, coordinateSystem, n, firstElementReceived))
-        .doOnTerminate(summarizePerformance(n, starting, firstElementReceived));
+            createSingleCellConsumer(template, coordinateSystem, seen, firstElementReceived))
+        .doOnTerminate(summarizePerformance(seen, starting, firstElementReceived));
   }
 
-  private static Publisher<Cell> createParallelPutPublisher(
+  static Publisher<Cell> createParallelPutPublisher(
       final GemfireTemplate template, final CoordinateSystem coordinateSystem,
-      final Publisher<Cell> source, final int parallelism) {
+      final Publisher<Cell> source, final int n, final int parallelism) {
 
-    final LongAdder n = new LongAdder();
+    final LongAdder seen = new LongAdder();
     final long starting = System.nanoTime();
     final AtomicLong firstElementReceived = new AtomicLong();
 
     return Flux.from(source)
-        .limitRequest(LIMIT_REQUEST)
+        .limitRequest(n)
         .parallel(parallelism)
-        .runOn(Schedulers.elastic())
+        // NB: gotta runOn() after parallel() to actually schedule work in parallel!
+        .runOn(Schedulers.parallel()) // uncomment to demonstrate BlockHound
+//        .runOn(Schedulers.elastic()) // uncomment to satisfy BlockHound
         .doOnNext(
-            createSingleCellConsumer(template, coordinateSystem, n, firstElementReceived))
-        .doOnTerminate(summarizePerformance(n, starting, firstElementReceived))
-        .sequential();
+            createSingleCellConsumer(template, coordinateSystem, seen, firstElementReceived))
+        .sequential()
+        .doOnTerminate(summarizePerformance(seen, starting, firstElementReceived));
   }
 
   static Publisher<List<Cell>> createSerialBulkPutPublisher(
@@ -118,54 +125,75 @@ public class CellOperations {
      */
     final Consumer<Collection<Cell>>
         bulkCellConsumer =
+
+        // ROBUST
         createRetryConsumer(
             createBulkCellConsumer(template, coordinateSystem, n, firstElementReceived),
+//            NO_MITIGATION
             PAUSE_MITIGATION
 //            createDestroyLRUCellsMitigation(cellGemfireTemplate, coordinateSystem)
             );
 
+        // FRAGILE
+//        createBulkCellConsumer(template, coordinateSystem, n, firstElementReceived);
+
+
     return Flux.from(source)
-        .subscribeOn(Schedulers.elastic()) // since we'll do blocking ops downstream
         .limitRequest(generations * coordinateSystem.size())
         .buffer(coordinateSystem.size())
+        .subscribeOn(Schedulers.parallel()) // uncomment to demonstrate BlockHound
+        //        .subscribeOn(Schedulers.elastic()) // uncomment to satisfy BlockHound
         .doOnNext(
             bulkCellConsumer)
         .doOnTerminate(summarizePerformance(n, starting, firstElementReceived));
   }
 
-  private static Publisher<List<Cell>> createParallelBulkPutPublisher(
+  static Publisher<List<Cell>> createParallelBulkPutPublisher(
       final GemfireTemplate template,
       final CoordinateSystem coordinateSystem,
       final Publisher<Cell> source,
-      final int parallelism) {
+      final int generations, final int parallelism) {
 
     final LongAdder n = new LongAdder();
     final long starting = System.nanoTime();
     final AtomicLong firstElementReceived = new AtomicLong();
 
-    return enforceGenerationFraming(
-        Flux.from(source)
-            .limitRequest(LIMIT_REQUEST)
-            .buffer(coordinateSystem.size()),
-        coordinateSystem)
+    final Consumer<Collection<Cell>>
+        bulkCellConsumer =
 
+        // ROBUST
+//        createRetryConsumer(
+//            createBulkCellConsumer(template, coordinateSystem, n, firstElementReceived),
+////            NO_MITIGATION
+//            PAUSE_MITIGATION
+////            createDestroyLRUCellsMitigation(cellGemfireTemplate, coordinateSystem)
+//        );
+
+        // FRAGILE
+        createBulkCellConsumer(template, coordinateSystem, n, firstElementReceived);
+
+    return Flux.from(source)
+        .limitRequest(generations * coordinateSystem.size())
+        .buffer(coordinateSystem.size())
         .parallel(parallelism)
-        .runOn(Schedulers.elastic())
+        // NB: gotta runOn() after parallel() to actually schedule work in parallel!
+        .runOn(Schedulers.parallel()) // uncomment to demonstrate BlockHound
+//        .runOn(Schedulers.elastic()) // uncomment to satisfy BlockHound
         .doOnNext(
-            createBulkCellConsumer(template, coordinateSystem, n, firstElementReceived))
-        .doOnTerminate(summarizePerformance(n, starting, firstElementReceived))
-        .sequential();
+            bulkCellConsumer)
+        .sequential()
+        .doOnTerminate(summarizePerformance(n, starting, firstElementReceived));
   }
 
   private static Consumer<Cell> createSingleCellConsumer(final GemfireTemplate template,
                                                          final CoordinateSystem coordinateSystem,
-                                                         final LongAdder n,
+                                                         final LongAdder seen,
                                                          final AtomicLong firstElementReceived) {
     return cell -> {
       if (firstElementReceived.get() == 0) {
         firstElementReceived.set(System.nanoTime());
       }
-      n.increment();
+      seen.increment();
       try {
         template.put(coordinateSystem.toOffset(cell.coordinates), cell);
       } catch (final Exception e) {
@@ -178,7 +206,7 @@ public class CellOperations {
 
   private static Consumer<Collection<Cell>> createBulkCellConsumer(final GemfireTemplate template,
                                                                    final CoordinateSystem coordinateSystem,
-                                                                   final LongAdder n,
+                                                                   final LongAdder seen,
                                                                    final AtomicLong firstElementReceived) {
     return cells -> {
       if (firstElementReceived.get() == 0)
@@ -188,7 +216,7 @@ public class CellOperations {
           final int key = coordinateSystem.toOffset(cell.coordinates);
           return new Pair<>(key, cell);
         }).collect(toLinkedMap(pair -> pair.k, pair -> pair.v));
-        n.add(entries.size());
+        seen.add(entries.size());
         template.putAll(entries);
       } catch (final Exception e) {
         e.printStackTrace();

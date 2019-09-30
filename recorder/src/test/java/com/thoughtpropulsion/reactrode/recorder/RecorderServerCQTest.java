@@ -11,6 +11,7 @@ import com.thoughtpropulsion.reactrode.geodeconfig.GeodeServerConfigurationAutoE
 import com.thoughtpropulsion.reactrode.model.Cell;
 import com.thoughtpropulsion.reactrode.model.CoordinateSystem;
 import com.thoughtpropulsion.reactrode.model.Coordinates;
+import com.thoughtpropulsion.reactrode.recorder.geodeclient.CellGemfireTemplate;
 import com.thoughtpropulsion.reactrode.recorder.server.RecorderServer;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -38,7 +39,8 @@ import org.apache.geode.cache.client.ClientRegionShortcut;
 import org.apache.geode.cache.query.CqEvent;
 
 @RunWith(SpringRunner.class)
-@ContextConfiguration(classes = RecorderServerCQTest.GeodeClientConfiguration.class)
+@ContextConfiguration(classes = {RecorderServerCQTest.GeodeClientConfiguration.class,
+    CellGemfireTemplate.class})
 @SuppressWarnings("unused")
 public class RecorderServerCQTest extends
     ForkingClientServerIntegrationTestsSupport {
@@ -66,7 +68,7 @@ public class RecorderServerCQTest extends
   public void simpleCQ() {
     final Publisher<Cell>
         gens =
-        recorderServer.allGenerationsStartingFrom(Coordinates.create(0, 0, PRIMORDIAL_GENERATION));
+        recorderServer.allGenerations(Coordinates.create(0, 0, PRIMORDIAL_GENERATION));
 
     StepVerifier.create(gens)
         .then(()-> putACell())

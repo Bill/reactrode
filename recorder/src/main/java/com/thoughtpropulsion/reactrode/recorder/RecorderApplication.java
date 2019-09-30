@@ -52,7 +52,7 @@ public class RecorderApplication {
           CellOperations.createSerialBulkPutPublisher(
               gemfireTemplate,
               coordinateSystem,
-              source, CellOperations.LIMIT_REQUEST/coordinateSystem.size()))
+              source, 100))
           .blockLast();
   }
 

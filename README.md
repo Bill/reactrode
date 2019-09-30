@@ -27,6 +27,19 @@ Works with OpenJDK 12 from Oracle and Adopt OpenJDK 12.
 
 ## Run
 
+To run just the reactive toy app: game server -> browser:
+
+```
+./gradlew :gameserver:bootRun
+```
+
+then, in another terminal:
+
+```
+cd react-app
+npm start
+```
+
 After starting these in IntelliJ:
 
 GeodeServerApplication `-Xmx1g -Xms1g -Xss144k`
